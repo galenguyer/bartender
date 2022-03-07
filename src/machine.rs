@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::env;
 use std::time::Duration;
+
 #[derive(Debug, Deserialize)]
 pub struct MachineResponse {
     #[serde(skip)]

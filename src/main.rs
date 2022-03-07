@@ -1,15 +1,12 @@
-use axum::extract::{Extension, FromRequest};
+use axum::extract::Extension;
 use axum::response::IntoResponse;
-use axum::{async_trait, BoxError, Json};
+use axum::Json;
 use axum::{routing::get, Router};
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use itertools::Itertools;
-use reqwest::StatusCode;
 use serde::Serialize;
-use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{Pool, Postgres};
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -18,12 +15,8 @@ use tower_http::trace::TraceLayer;
 
 use bartender::db;
 use bartender::machine;
-use bartender::oidc::{self, OIDCUser};
-
-struct State {
-    pub pg_pool: Pool<Postgres>,
-    pub oidc_client: oidc::OIDCClient,
-}
+use bartender::oidc::{auth::OIDCAuth, client};
+use bartender::State;
 
 #[derive(Debug, Serialize)]
 struct DrinkResponse {
@@ -70,7 +63,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(5)
         .connect(&env::var("DATABASE_URL").unwrap())
         .await?;
-    let oidc_client = oidc::OIDCClient::new();
+    let oidc_client = client::OIDCClient::new();
 
     let shared_state = Arc::new(State {
         pg_pool,
@@ -167,50 +160,4 @@ async fn root(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
 
 async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
     format!("{:#?}", user)
-}
-
-struct OIDCAuth(OIDCUser);
-
-#[async_trait]
-impl<B> FromRequest<B> for OIDCAuth
-where
-    B: axum::body::HttpBody + Send,
-    B::Data: Send,
-    B::Error: Into<BoxError>,
-{
-    type Rejection = (axum::http::StatusCode, axum::Json<serde_json::Value>);
-
-    async fn from_request(
-        req: &mut axum::extract::RequestParts<B>,
-    ) -> Result<Self, Self::Rejection> {
-        let auth_header = req
-            .headers()
-            .and_then(|headers| headers.get(axum::http::header::AUTHORIZATION))
-            .and_then(|value| value.to_str().ok());
-
-        match auth_header {
-            Some(header) => {
-                let state: &Arc<State> = &*req.extensions().unwrap().get().unwrap();
-                let oidc_client = &state.oidc_client;
-
-                match oidc_client.validate_token(header).await {
-                    Ok(user) => {
-                        return Ok(Self(user));
-                    }
-                    Err(_) => {
-                        return Err((
-                            StatusCode::UNAUTHORIZED,
-                            axum::Json(json!({"error": "token invalid or expired"})),
-                        ))
-                    }
-                }
-            }
-            None => {
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    axum::Json(json!({"error": "missing auth header"})),
-                ))
-            }
-        }
-    }
 }
