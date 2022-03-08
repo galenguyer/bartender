@@ -1,4 +1,5 @@
 use axum::extract::{Extension, Query};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use axum::{routing::get, Router};
@@ -16,9 +17,9 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use bartender::db;
-use bartender::ldap;
+use bartender::ldap::client as ldap_client;
 use bartender::machine;
-use bartender::oidc::{auth::OIDCAuth, client};
+use bartender::oidc::{auth::OIDCAuth, client as oidc_client};
 use bartender::State;
 
 #[derive(Debug, Serialize)]
@@ -66,7 +67,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .max_connections(5)
         .connect(&env::var("DATABASE_URL").unwrap())
         .await?;
-    let oidc_client = client::OIDCClient::new();
+    let oidc_client = oidc_client::OIDCClient::new();
 
     let shared_state = Arc::new(State {
         pg_pool,
@@ -169,11 +170,14 @@ async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
 async fn ldap_test(Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
     let uid = params.get("uid").map(|id| id.to_owned());
     if uid.is_none() {
-        return Json(json!({"error":"no uid given"}));
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"no uid given"})),
+        );
     }
 
     let ldap = tokio::task::spawn_blocking(|| {
-        ldap::LdapClient::new(
+        ldap_client::LdapClient::new(
             &env::var("LDAP_BIND_DN").unwrap(),
             &env::var("LDAP_BIND_PW").unwrap(),
         )
@@ -185,5 +189,11 @@ async fn ldap_test(Query(params): Query<HashMap<String, String>>) -> impl IntoRe
         .await
         .unwrap();
 
-    Json(json!(user))
+    match user {
+        Some(u) => (StatusCode::OK, Json(json!(u))),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "user not found"})),
+        ),
+    }
 }
