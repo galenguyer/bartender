@@ -1,7 +1,7 @@
-use ldap3::{drive, Ldap, LdapConnAsync, SearchEntry};
+use ldap3::{drive, Ldap, LdapConnAsync, Mod, SearchEntry};
 use rand::prelude::SliceRandom;
 use rand::SeedableRng;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::str::FromStr;
 use trust_dns_resolver::{
@@ -9,7 +9,7 @@ use trust_dns_resolver::{
     AsyncResolver,
 };
 
-use super::user::LdapUser;
+use super::user::{LdapUser, LdapUserChangeSet};
 
 #[derive(Clone)]
 pub struct LdapClient {
@@ -65,6 +65,20 @@ impl LdapClient {
             None
         }
     }
+
+    pub async fn update_user(&mut self, change_set: &LdapUserChangeSet) {
+        let mut changes = Vec::new();
+        if change_set.drinkBalance.is_some() {
+            changes.push(Mod::Replace(
+                String::from("drinkBalance"),
+                HashSet::from([change_set.drinkBalance.unwrap().to_string()]),
+            ))
+        }
+        match self.ldap.modify(&change_set.dn, changes).await {
+            Ok(_) => {}
+            Err(e) => eprintln!("{:#?}", e),
+        }
+    }
 }
 
 async fn get_ldap_servers() -> Vec<String> {
@@ -89,6 +103,7 @@ where
     T: FromStr,
     <T as FromStr>::Err: Debug,
 {
+    // TODO: Handle null
     entry
         .get(field)
         .unwrap()

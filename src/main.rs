@@ -18,6 +18,7 @@ use tower_http::trace::TraceLayer;
 
 use bartender::db;
 use bartender::ldap::client as ldap_client;
+use bartender::ldap::user::*;
 use bartender::machine;
 use bartender::oidc::{auth::OIDCAuth, client as oidc_client};
 use bartender::State;
@@ -186,14 +187,24 @@ async fn ldap_test(
         );
     }
 
-    let user = ldap.get_user(&uid.unwrap()).await;
-    //let credits = params.get("credits").map(|num| num.parse::<i64>());
+    let user = ldap.get_user(&uid.clone().unwrap()).await;
+    let credits = params.get("credits").map(|num| num.parse::<i64>());
 
-    match user {
-        Some(u) => (StatusCode::OK, Json(json!(u))),
-        None => (
+    match (user, credits) {
+        (None, _) => (
             StatusCode::NOT_FOUND,
             Json(json!({"error": "user not found"})),
         ),
+        (Some(u), None) => (StatusCode::OK, Json(json!(u))),
+        (Some(u), Some(c)) => {
+            let change_set = LdapUserChangeSet {
+                dn: u.clone().dn,
+                drinkBalance: Some(c.unwrap()),
+                ibutton: None,
+            };
+            ldap.update_user(&change_set).await;
+            let user = ldap.get_user(&uid.unwrap()).await.unwrap();
+            (StatusCode::OK, Json(json!(user)))
+        }
     }
 }
