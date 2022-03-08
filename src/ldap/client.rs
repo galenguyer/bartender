@@ -1,29 +1,39 @@
-use super::user::LdapUser;
-use ldap3::{LdapConn, LdapConnSettings, SearchEntry};
-use rand::seq::SliceRandom;
-use std::{collections::HashMap, fmt::Debug, str::FromStr};
-use trust_dns_resolver::Resolver;
+use ldap3::{drive, Ldap, LdapConnAsync, SearchEntry};
+use rand::prelude::SliceRandom;
+use rand::SeedableRng;
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::str::FromStr;
+use trust_dns_resolver::{
+    config::{ResolverConfig, ResolverOpts},
+    AsyncResolver,
+};
 
+use super::user::LdapUser;
+
+#[derive(Clone)]
 pub struct LdapClient {
-    #[allow(dead_code)]
-    servers: Vec<String>,
-    ldap: LdapConn,
+    ldap: Ldap,
 }
 
 impl LdapClient {
-    pub fn new(bind_dn: &str, bind_pw: &str) -> Self {
-        let servers = get_ldap_servers();
-        let mut ldap = LdapConn::with_settings(
-            LdapConnSettings::new().set_no_tls_verify(true),
-            servers.choose(&mut rand::thread_rng()).unwrap(),
+    pub async fn new(bind_dn: &str, bind_pw: &str) -> Self {
+        let servers = get_ldap_servers().await;
+        let (conn, mut ldap) = LdapConnAsync::new(
+            servers
+                .choose(&mut rand::rngs::StdRng::from_entropy())
+                .unwrap(),
         )
+        .await
         .unwrap();
-        ldap.with_timeout(std::time::Duration::from_secs(5));
-        ldap.simple_bind(bind_dn, bind_pw).unwrap();
-        LdapClient { servers, ldap }
+        drive!(conn);
+
+        ldap.simple_bind(bind_dn, bind_pw).await.unwrap();
+
+        LdapClient { ldap }
     }
 
-    pub fn get_user(mut self, uid: &str) -> Option<LdapUser> {
+    pub async fn get_user(&mut self, uid: &str) -> Option<LdapUser> {
         self.ldap.with_timeout(std::time::Duration::from_secs(5));
         let (results, _result) = self
             .ldap
@@ -33,20 +43,23 @@ impl LdapClient {
                 &format!("uid={uid}"),
                 vec!["*"],
             )
+            .await
             .unwrap()
             .success()
             .unwrap();
 
         if results.len() == 1 {
-            let user = SearchEntry::construct(results.get(0).unwrap().to_owned()).attrs;
+            let user = SearchEntry::construct(results.get(0).unwrap().to_owned());
+            let user_attrs = user.attrs;
             Some(LdapUser {
-                cn: get_one(&user, "cn"),
-                drinkBalance: get_one(&user, "drinkBalance"),
-                krbPrincipalName: get_one(&user, "krbPrincipalName"),
-                mail: get_vec(&user, "mail"),
-                mobile: get_vec(&user, "mobile"),
-                ibutton: get_vec(&user, "ibutton"),
-                uid: get_one(&user, "uid"),
+                dn: user.dn,
+                cn: get_one(&user_attrs, "cn"),
+                drinkBalance: get_one(&user_attrs, "drinkBalance"),
+                krbPrincipalName: get_one(&user_attrs, "krbPrincipalName"),
+                mail: get_vec(&user_attrs, "mail"),
+                mobile: get_vec(&user_attrs, "mobile"),
+                ibutton: get_vec(&user_attrs, "ibutton"),
+                uid: get_one(&user_attrs, "uid"),
             })
         } else {
             None
@@ -54,10 +67,12 @@ impl LdapClient {
     }
 }
 
-fn get_ldap_servers() -> Vec<String> {
-    let resolver = Resolver::default().unwrap();
-    let response = resolver.srv_lookup("_ldap._tcp.csh.rit.edu").unwrap();
+async fn get_ldap_servers() -> Vec<String> {
+    let resolver =
+        AsyncResolver::tokio(ResolverConfig::default(), ResolverOpts::default()).unwrap();
+    let response = resolver.srv_lookup("_ldap._tcp.csh.rit.edu").await.unwrap();
 
+    // TODO: Make sure servers are working
     response
         .iter()
         .map(|record| {
@@ -66,7 +81,6 @@ fn get_ldap_servers() -> Vec<String> {
                 record.target().to_string().trim_end_matches('.')
             )
         })
-        .filter(|addr| LdapConn::new(addr).is_ok())
         .collect()
 }
 

@@ -57,7 +57,7 @@ async fn main() -> Result<(), sqlx::Error> {
     dotenv::dotenv().ok();
     // Set logging levels if not already set
     if env::var_os("RUST_LOG").is_none() {
-        env::set_var("RUST_LOG", "bartender=debug,tower_http=debug");
+        env::set_var("RUST_LOG", "bartender=debug,tower_http=debug,tokio=debug");
     }
 
     // Initialize tracing with previously set logging levels
@@ -68,6 +68,12 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(&env::var("DATABASE_URL").unwrap())
         .await?;
     let oidc_client = oidc_client::OIDCClient::new();
+
+    let ldap_client = ldap_client::LdapClient::new(
+        &env::var("LDAP_BIND_DN").unwrap(),
+        &env::var("LDAP_BIND_PW").unwrap(),
+    )
+    .await;
 
     let shared_state = Arc::new(State {
         pg_pool,
@@ -81,7 +87,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(Extension(shared_state)),
+                .layer(Extension(shared_state))
+                .layer(Extension(ldap_client)),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
@@ -167,7 +174,10 @@ async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
     format!("{:#?}", user)
 }
 
-async fn ldap_test(Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+async fn ldap_test(
+    Extension(mut ldap): Extension<ldap_client::LdapClient>,
+    Query(params): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
     let uid = params.get("uid").map(|id| id.to_owned());
     if uid.is_none() {
         return (
@@ -176,18 +186,8 @@ async fn ldap_test(Query(params): Query<HashMap<String, String>>) -> impl IntoRe
         );
     }
 
-    let ldap = tokio::task::spawn_blocking(|| {
-        ldap_client::LdapClient::new(
-            &env::var("LDAP_BIND_DN").unwrap(),
-            &env::var("LDAP_BIND_PW").unwrap(),
-        )
-    })
-    .await
-    .unwrap();
-
-    let user = tokio::task::spawn_blocking(|| ldap.get_user(&uid.unwrap()))
-        .await
-        .unwrap();
+    let user = ldap.get_user(&uid.unwrap()).await;
+    //let credits = params.get("credits").map(|num| num.parse::<i64>());
 
     match user {
         Some(u) => (StatusCode::OK, Json(json!(u))),
