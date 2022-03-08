@@ -33,6 +33,40 @@ impl LdapClient {
         LdapClient { ldap }
     }
 
+    pub async fn search_users(&mut self, query: &str) -> Vec<LdapUser> {
+        self.ldap.with_timeout(std::time::Duration::from_secs(5));
+        let (results, _result) = self
+            .ldap
+            .search(
+                "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
+                ldap3::Scope::Subtree,
+                &format!("(|(uid=*{query}*)(cn=*{query}*))"),
+                vec!["*"],
+            )
+            .await
+            .unwrap()
+            .success()
+            .unwrap();
+
+        results
+            .iter()
+            .map(|result| {
+                let user = SearchEntry::construct(result.to_owned());
+                let user_attrs = user.attrs;
+                LdapUser {
+                    dn: user.dn,
+                    cn: get_one(&user_attrs, "cn"),
+                    drinkBalance: get_one(&user_attrs, "drinkBalance"),
+                    krbPrincipalName: get_one(&user_attrs, "krbPrincipalName"),
+                    mail: get_vec(&user_attrs, "mail"),
+                    mobile: get_vec(&user_attrs, "mobile"),
+                    ibutton: get_vec(&user_attrs, "ibutton"),
+                    uid: get_one(&user_attrs, "uid"),
+                }
+            })
+            .collect()
+    }
+
     pub async fn get_user(&mut self, uid: &str) -> Option<LdapUser> {
         self.ldap.with_timeout(std::time::Duration::from_secs(5));
         let (results, _result) = self
@@ -40,7 +74,7 @@ impl LdapClient {
             .search(
                 "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
                 ldap3::Scope::Subtree,
-                &format!("(uid={uid})"),
+                &format!("uid={uid}"),
                 vec!["*"],
             )
             .await

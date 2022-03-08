@@ -85,6 +85,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/", get(root))
         .route("/auth_test", get(auth_test))
         .route("/ldap_test", get(ldap_test))
+        .route("/search_users", get(users_search))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -207,4 +208,20 @@ async fn ldap_test(
             (StatusCode::OK, Json(json!(user)))
         }
     }
+}
+
+async fn users_search(
+    Extension(mut ldap): Extension<ldap_client::LdapClient>,
+    Query(params): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    let query = params.get("query").map(|id| id.to_owned());
+    if query.is_none() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"no query given"})),
+        );
+    }
+
+    let users = ldap.search_users(&query.clone().unwrap()).await;
+    (StatusCode::OK, Json(json!(users)))
 }
