@@ -40,7 +40,7 @@ impl LdapClient {
             .search(
                 "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
                 ldap3::Scope::Subtree,
-                &format!("uid={uid}"),
+                &format!("(uid={uid})"),
                 vec!["*"],
             )
             .await
@@ -103,10 +103,8 @@ where
     T: FromStr,
     <T as FromStr>::Err: Debug,
 {
-    entry
-        .get(field)
-        .unwrap()
-        .iter()
-        .map(|f| f.parse::<T>().unwrap())
-        .collect()
+    match entry.get(field) {
+        Some(v) => v.iter().map(|f| f.parse::<T>().unwrap()).collect(),
+        None => vec![],
+    }
 }
