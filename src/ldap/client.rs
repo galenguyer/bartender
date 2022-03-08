@@ -1,9 +1,7 @@
 use ldap3::{drive, Ldap, LdapConnAsync, Mod, SearchEntry};
 use rand::prelude::SliceRandom;
 use rand::SeedableRng;
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
-use std::str::FromStr;
+use std::collections::HashSet;
 use trust_dns_resolver::{
     config::{ResolverConfig, ResolverOpts},
     AsyncResolver,
@@ -52,17 +50,7 @@ impl LdapClient {
             .iter()
             .map(|result| {
                 let user = SearchEntry::construct(result.to_owned());
-                let user_attrs = user.attrs;
-                LdapUser {
-                    dn: user.dn,
-                    cn: get_one(&user_attrs, "cn"),
-                    drinkBalance: get_one(&user_attrs, "drinkBalance"),
-                    krbPrincipalName: get_one(&user_attrs, "krbPrincipalName"),
-                    mail: get_vec(&user_attrs, "mail"),
-                    mobile: get_vec(&user_attrs, "mobile"),
-                    ibutton: get_vec(&user_attrs, "ibutton"),
-                    uid: get_one(&user_attrs, "uid"),
-                }
+                LdapUser::from_entry(&user)
             })
             .collect()
     }
@@ -84,17 +72,7 @@ impl LdapClient {
 
         if results.len() == 1 {
             let user = SearchEntry::construct(results.get(0).unwrap().to_owned());
-            let user_attrs = user.attrs;
-            Some(LdapUser {
-                dn: user.dn,
-                cn: get_one(&user_attrs, "cn"),
-                drinkBalance: get_one(&user_attrs, "drinkBalance"),
-                krbPrincipalName: get_one(&user_attrs, "krbPrincipalName"),
-                mail: get_vec(&user_attrs, "mail"),
-                mobile: get_vec(&user_attrs, "mobile"),
-                ibutton: get_vec(&user_attrs, "ibutton"),
-                uid: get_one(&user_attrs, "uid"),
-            })
+            Some(LdapUser::from_entry(&user))
         } else {
             None
         }
@@ -130,30 +108,4 @@ async fn get_ldap_servers() -> Vec<String> {
             )
         })
         .collect()
-}
-
-fn get_one<T>(entry: &HashMap<String, Vec<String>>, field: &str) -> T
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    // TODO: Handle null
-    entry
-        .get(field)
-        .unwrap()
-        .get(0)
-        .unwrap()
-        .parse::<T>()
-        .unwrap()
-}
-
-fn get_vec<T>(entry: &HashMap<String, Vec<String>>, field: &str) -> Vec<T>
-where
-    T: FromStr,
-    <T as FromStr>::Err: Debug,
-{
-    match entry.get(field) {
-        Some(v) => v.iter().map(|f| f.parse::<T>().unwrap()).collect(),
-        None => vec![],
-    }
 }
