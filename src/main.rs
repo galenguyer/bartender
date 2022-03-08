@@ -1,4 +1,4 @@
-use axum::extract::Extension;
+use axum::extract::{Extension, Query};
 use axum::response::IntoResponse;
 use axum::Json;
 use axum::{routing::get, Router};
@@ -6,7 +6,9 @@ use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use itertools::Itertools;
 use serde::Serialize;
+use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
+use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -14,6 +16,7 @@ use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use bartender::db;
+use bartender::ldap;
 use bartender::machine;
 use bartender::oidc::{auth::OIDCAuth, client};
 use bartender::State;
@@ -73,6 +76,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         .route("/", get(root))
         .route("/auth_test", get(auth_test))
+        .route("/ldap_test", get(ldap_test))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -160,4 +164,26 @@ async fn root(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
 
 async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
     format!("{:#?}", user)
+}
+
+async fn ldap_test(Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+    let uid = params.get("uid").map(|id| id.to_owned());
+    if uid.is_none() {
+        return Json(json!({"error":"no uid given"}));
+    }
+
+    let ldap = tokio::task::spawn_blocking(|| {
+        ldap::LdapClient::new(
+            &env::var("LDAP_BIND_DN").unwrap(),
+            &env::var("LDAP_BIND_PW").unwrap(),
+        )
+    })
+    .await
+    .unwrap();
+
+    let user = tokio::task::spawn_blocking(|| ldap.get_user(&uid.unwrap()))
+        .await
+        .unwrap();
+
+    Json(json!(user))
 }
