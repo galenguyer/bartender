@@ -13,6 +13,7 @@ use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
@@ -63,10 +64,12 @@ async fn main() -> Result<(), sqlx::Error> {
     // Initialize tracing with previously set logging levels
     tracing_subscriber::fmt::init();
 
-    let pg_pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&env::var("DATABASE_URL").unwrap())
-        .await?;
+    let pg_pool = Arc::new(
+        PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&env::var("DATABASE_URL").unwrap())
+            .await?,
+    );
     let oidc_client = oidc_client::OIDCClient::new();
 
     let ldap_client = ldap_client::LdapClient::new(
@@ -98,7 +101,7 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn root(Extension(pool): Extension<Pool<Postgres>>) -> impl IntoResponse {
+async fn root(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl IntoResponse {
     let machines = db::get_active_machines(&pool).await.unwrap();
     let futures: FuturesOrdered<_> = machines
         .iter()
