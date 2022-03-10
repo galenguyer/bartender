@@ -3,7 +3,6 @@ pub mod client {
     use ldap3::{LdapConn, LdapConnSettings, Mod, SearchEntry};
     use rand::seq::SliceRandom;
     use std::collections::HashSet;
-    use std::{collections::HashMap, fmt::Debug, str::FromStr};
     use trust_dns_resolver::Resolver;
 
     pub struct LdapClient {
@@ -41,17 +40,7 @@ pub mod client {
 
             if results.len() == 1 {
                 let user = SearchEntry::construct(results.get(0).unwrap().to_owned());
-                let user_attrs = user.attrs;
-                Some(LdapUser {
-                    dn: user.dn,
-                    cn: get_one(&user_attrs, "cn"),
-                    drinkBalance: get_one(&user_attrs, "drinkBalance"),
-                    krbPrincipalName: get_one(&user_attrs, "krbPrincipalName"),
-                    mail: get_vec(&user_attrs, "mail"),
-                    mobile: get_vec(&user_attrs, "mobile"),
-                    ibutton: get_vec(&user_attrs, "ibutton"),
-                    uid: get_one(&user_attrs, "uid"),
-                })
+                Some(LdapUser::from_entry(&user))
             } else {
                 None
             }
@@ -66,7 +55,7 @@ pub mod client {
                 &user.dn,
                 vec![Mod::Replace(
                     "drinkBalance",
-                    HashSet::from([format!("{}", user.drinkBalance).as_str()]),
+                    HashSet::from([format!("{}", user.drinkBalance.unwrap()).as_str()]),
                 )],
             )
         }
@@ -85,33 +74,6 @@ pub mod client {
                 )
             })
             .filter(|addr| LdapConn::new(addr).is_ok())
-            .collect()
-    }
-
-    fn get_one<T>(entry: &HashMap<String, Vec<String>>, field: &str) -> T
-    where
-        T: FromStr,
-        <T as FromStr>::Err: Debug,
-    {
-        entry
-            .get(field)
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .parse::<T>()
-            .unwrap()
-    }
-
-    fn get_vec<T>(entry: &HashMap<String, Vec<String>>, field: &str) -> Vec<T>
-    where
-        T: FromStr,
-        <T as FromStr>::Err: Debug,
-    {
-        entry
-            .get(field)
-            .unwrap()
-            .iter()
-            .map(|f| f.parse::<T>().unwrap())
             .collect()
     }
 }
