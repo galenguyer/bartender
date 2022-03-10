@@ -9,10 +9,10 @@ use itertools::Itertools;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
@@ -21,7 +21,6 @@ use bartender::ldap::client as ldap_client;
 use bartender::ldap::user::*;
 use bartender::machine;
 use bartender::oidc::{auth::OIDCAuth, client as oidc_client};
-use bartender::State;
 
 #[derive(Debug, Serialize)]
 struct DrinkResponse {
@@ -76,11 +75,6 @@ async fn main() -> Result<(), sqlx::Error> {
     )
     .await;
 
-    let shared_state = Arc::new(State {
-        pg_pool,
-        oidc_client,
-    });
-
     let app = Router::new()
         .route("/", get(root))
         .route("/auth_test", get(auth_test))
@@ -89,8 +83,9 @@ async fn main() -> Result<(), sqlx::Error> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(Extension(shared_state))
-                .layer(Extension(ldap_client)),
+                .layer(Extension(ldap_client))
+                .layer(Extension(pg_pool))
+                .layer(Extension(oidc_client)),
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
@@ -103,16 +98,15 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn root(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
-    let pool = &(*state).pg_pool;
-    let machines = db::get_active_machines(pool).await.unwrap();
+async fn root(Extension(pool): Extension<Pool<Postgres>>) -> impl IntoResponse {
+    let machines = db::get_active_machines(&pool).await.unwrap();
     let futures: FuturesOrdered<_> = machines
         .iter()
         .map(|m| machine::get_status(&m.name))
         .collect();
     let machine_states: Vec<Result<machine::MachineResponse, reqwest::Error>> =
         futures.collect().await;
-    let slots = db::get_slots_with_items(pool).await.unwrap();
+    let slots = db::get_slots_with_items(&pool).await.unwrap();
     let resp =
         DrinkResponse {
             machines: machines

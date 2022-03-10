@@ -4,7 +4,6 @@ use axum::extract::FromRequest;
 use axum::http::StatusCode;
 use axum::BoxError;
 use serde_json::json;
-use std::sync::Arc;
 
 pub struct OIDCAuth(pub user::OIDCUser);
 
@@ -27,8 +26,8 @@ where
 
         match auth_header {
             Some(header) => {
-                let state: &Arc<crate::State> = &*req.extensions().unwrap().get().unwrap();
-                let oidc_client = &state.oidc_client;
+                let oidc_client: &crate::oidc::client::OIDCClient =
+                    &*req.extensions().unwrap().get().unwrap();
 
                 match oidc_client.validate_token(header).await {
                     Ok(user) => {

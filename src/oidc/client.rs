@@ -1,6 +1,7 @@
 use super::{user::OIDCUser, OIDCError};
 use std::time::Duration;
 
+#[derive(Clone)]
 pub struct OIDCClient {
     http_client: reqwest::Client,
 }
