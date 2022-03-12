@@ -1,4 +1,6 @@
+use lazy_static::lazy_static;
 use ldap3::SearchEntry;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -10,6 +12,7 @@ pub struct LdapUser {
     pub dn: String,
     pub cn: String,
     pub uid: String,
+    pub groups: Vec<String>,
     pub krbPrincipalName: String,
     pub mail: Vec<String>,
     pub mobile: Vec<String>,
@@ -23,12 +26,13 @@ impl LdapUser {
         LdapUser {
             dn: entry.dn.clone(),
             cn: get_one(user_attrs, "cn").unwrap(),
-            drinkBalance: get_one(user_attrs, "drinkBalance"),
+            uid: get_one(user_attrs, "uid").unwrap(),
+            groups: get_groups(get_vec(user_attrs, "memberOf")),
             krbPrincipalName: get_one(user_attrs, "krbPrincipalName").unwrap(),
             mail: get_vec(user_attrs, "mail"),
             mobile: get_vec(user_attrs, "mobile"),
             ibutton: get_vec(user_attrs, "ibutton"),
-            uid: get_one(user_attrs, "uid").unwrap(),
+            drinkBalance: get_one(user_attrs, "drinkBalance"),
         }
     }
 }
@@ -52,6 +56,22 @@ where
         Some(v) => v.iter().map(|f| f.parse::<T>().unwrap()).collect(),
         None => vec![],
     }
+}
+
+pub fn get_groups(member_of: Vec<String>) -> Vec<String> {
+    lazy_static! {
+        static ref GROUP_REGEX: Regex =
+            Regex::new(r"cn=(?P<name>\w+),cn=groups,cn=accounts,dc=csh,dc=rit,dc=edu").unwrap();
+    }
+    member_of
+        .iter()
+        .map(|group| match GROUP_REGEX.captures(group) {
+            Some(cap) => Some(cap["name"].to_owned()),
+            None => None,
+        })
+        .filter(|cap| cap.is_some())
+        .map(|cap| cap.unwrap())
+        .collect()
 }
 
 #[derive(Debug, Serialize, Deserialize)]

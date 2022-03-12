@@ -71,12 +71,7 @@ async fn main() -> Result<(), sqlx::Error> {
                             "http://localhost:3000".parse().unwrap(),
                             "https://webdrink.csh.rit.edu".parse().unwrap(),
                         ]))
-                        .allow_methods(vec![
-                            Method::GET,
-                            Method::POST,
-                            Method::PUT,
-                            Method::DELETE,
-                        ])
+                        .allow_methods(vec![Method::GET, Method::POST, Method::PUT, Method::DELETE])
                         .allow_headers(cors::Any),
                 )
                 .layer(Extension(ldap_client))

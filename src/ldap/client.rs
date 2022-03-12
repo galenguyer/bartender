@@ -9,10 +9,11 @@ use trust_dns_resolver::{
 
 use super::user::{LdapUser, LdapUserChangeSet};
 
-const SEARCH_ATTRS: [&str; 8] = [
+const SEARCH_ATTRS: [&str; 9] = [
     "cn",
     "dn",
     "uid",
+    "memberOf",
     "krbPrincipalName",
     "mail",
     "mobile",
