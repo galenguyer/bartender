@@ -53,6 +53,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         .route("/drinks", get(routes::compat::drinks::get_drinks))
         .route("/drinks/drop", post(routes::compat::drinks::drop))
+        .route("/users", get(routes::compat::users::get_users))
         .route(
             "/users/credits",
             get(routes::compat::users::get_credits).put(routes::compat::users::set_credits),

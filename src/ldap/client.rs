@@ -9,6 +9,17 @@ use trust_dns_resolver::{
 
 use super::user::{LdapUser, LdapUserChangeSet};
 
+const SEARCH_ATTRS: [&str; 8] = [
+    "cn",
+    "dn",
+    "uid",
+    "krbPrincipalName",
+    "mail",
+    "mobile",
+    "ibutton",
+    "drinkBalance",
+];
+
 #[derive(Clone)]
 pub struct LdapClient {
     ldap: Ldap,
@@ -39,7 +50,30 @@ impl LdapClient {
                 "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
                 ldap3::Scope::Subtree,
                 &format!("(|(uid=*{query}*)(cn=*{query}*))"),
-                vec!["*"],
+                SEARCH_ATTRS,
+            )
+            .await
+            .unwrap()
+            .success()
+            .unwrap();
+
+        results
+            .iter()
+            .map(|result| {
+                let user = SearchEntry::construct(result.to_owned());
+                LdapUser::from_entry(&user)
+            })
+            .collect()
+    }
+
+    pub async fn _do_not_use_get_all_users(&mut self) -> Vec<LdapUser> {
+        let (results, _result) = self
+            .ldap
+            .search(
+                "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
+                ldap3::Scope::Subtree,
+                "(objectClass=cshMember)",
+                SEARCH_ATTRS,
             )
             .await
             .unwrap()
@@ -63,7 +97,7 @@ impl LdapClient {
                 "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
                 ldap3::Scope::Subtree,
                 &format!("uid={uid}"),
-                vec!["*"],
+                SEARCH_ATTRS,
             )
             .await
             .unwrap()

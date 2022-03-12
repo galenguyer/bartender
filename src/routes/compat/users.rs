@@ -1,4 +1,4 @@
-use crate::ldap::client as ldap_client;
+use crate::ldap::client::LdapClient;
 use crate::ldap::user::LdapUserChangeSet;
 use axum::extract::{Extension, Query};
 use axum::http::StatusCode;
@@ -8,8 +8,19 @@ use itertools::Itertools;
 use serde_json::json;
 use std::collections::HashMap;
 
+pub async fn get_users(Extension(mut ldap): Extension<LdapClient>) -> impl IntoResponse {
+    let users = ldap._do_not_use_get_all_users().await;
+    return (
+        StatusCode::OK,
+        Json(json!({
+            "message": format!("Retrieved {} users", users.len()),
+            "users": users
+        })),
+    );
+}
+
 pub async fn get_credits(
-    Extension(mut ldap): Extension<ldap_client::LdapClient>,
+    Extension(mut ldap): Extension<LdapClient>,
     Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
     let uid = params.get("uid").map(|id| id.to_owned());
@@ -70,7 +81,7 @@ pub async fn get_credits(
 }
 
 pub async fn set_credits(
-    Extension(mut ldap): Extension<ldap_client::LdapClient>,
+    Extension(mut ldap): Extension<LdapClient>,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let uid = body["uid"].as_str();
