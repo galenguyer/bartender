@@ -101,6 +101,7 @@ dependencies = [
  "futures",
  "itertools",
  "ldap3",
+ "log",
  "rand",
  "reqwest",
  "serde",

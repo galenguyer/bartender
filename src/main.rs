@@ -2,7 +2,11 @@ use axum::extract::{Extension, Query};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use log::info;
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
 use std::collections::HashMap;
@@ -35,16 +39,21 @@ async fn main() -> Result<(), sqlx::Error> {
             .connect(&env::var("DATABASE_URL").unwrap())
             .await?,
     );
+    info!("Postgres pool initialized");
+
     let oidc_client = oidc_client::OIDCClient::new();
+    info!("OIDC client initialized");
 
     let ldap_client = ldap_client::LdapClient::new(
         &env::var("LDAP_BIND_DN").unwrap(),
         &env::var("LDAP_BIND_PW").unwrap(),
     )
     .await;
+    info!("LDAP client initialized");
 
     let app = Router::new()
-        .route("/", get(routes::compat::drinks::get_drinks))
+        .route("/drinks", get(routes::compat::drinks::get_drinks))
+        .route("/drinks/drop", post(routes::compat::drinks::drop))
         .route("/auth_test", get(auth_test))
         .route("/ldap_test", get(ldap_test))
         .route("/search_users", get(users_search))
@@ -57,7 +66,7 @@ async fn main() -> Result<(), sqlx::Error> {
         );
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
-    println!("starting on http://{}", addr);
+    info!("starting on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

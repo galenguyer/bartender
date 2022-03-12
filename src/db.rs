@@ -1,14 +1,16 @@
 use sqlx::{Pool, Postgres};
 
 pub mod models {
-    #[derive(sqlx::FromRow, Debug)]
+    use serde::Serialize;
+
+    #[derive(sqlx::FromRow, Debug, Serialize)]
     pub struct Machine {
         pub id: i32,
         pub name: String,
         pub display_name: String,
         pub active: bool,
     }
-    #[derive(sqlx::FromRow, Debug)]
+    #[derive(sqlx::FromRow, Debug, Serialize)]
     pub struct Slot {
         pub machine: i32,
         pub number: i32,
@@ -47,4 +49,71 @@ pub async fn get_all_machines(pool: &Pool<Postgres>) -> Result<Vec<models::Machi
     sqlx::query_as::<_, models::Machine>("SELECT * FROM machines")
         .fetch_all(pool)
         .await
+}
+
+pub async fn get_machine(
+    pool: &Pool<Postgres>,
+    name: &str,
+) -> Result<models::Machine, sqlx::Error> {
+    sqlx::query_as::<_, models::Machine>("SELECT * FROM machines WHERE active = true AND name = $1")
+        .bind(name)
+        .fetch_one(pool)
+        .await
+}
+
+pub async fn get_slot(
+    pool: &Pool<Postgres>,
+    machine_id: i32,
+    slot: i32,
+) -> Result<models::Slot, sqlx::Error> {
+    sqlx::query_as::<_, models::Slot>(
+        "SELECT machine,number,item,active,count,id,name,price FROM slots 
+        INNER JOIN items 
+            ON slots.item = items.id 
+        WHERE machine = $1 AND number = $2",
+    )
+    .bind(machine_id)
+    .bind(slot)
+    .fetch_one(pool)
+    .await
+}
+
+pub async fn update_slot_count(
+    pool: &Pool<Postgres>,
+    machine_id: i32,
+    slot_id: i32,
+    new_count: i32,
+) -> Result<(), sqlx::Error> {
+    let _ = sqlx::query_as::<_, models::Slot>(
+        "UPDATE slots 
+                SET count = $1
+                WHERE machine = $2 AND number = $3",
+    )
+    .bind(new_count)
+    .bind(machine_id)
+    .bind(slot_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn update_slot_active(
+    pool: &Pool<Postgres>,
+    machine_id: i32,
+    slot_id: i32,
+    active: bool,
+) -> Result<(), sqlx::Error> {
+    let _ = sqlx::query_as::<_, models::Slot>(
+        "UPDATE slots 
+                SET active = $1
+                WHERE machine = $2 AND number = $3",
+    )
+    .bind(active)
+    .bind(machine_id)
+    .bind(slot_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(())
 }
