@@ -1,4 +1,5 @@
 use axum::extract::{Extension, Query};
+use axum::http::Method;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -14,6 +15,7 @@ use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower::ServiceBuilder;
+use tower_http::cors::{self, CorsLayer, Origin};
 use tower_http::trace::TraceLayer;
 
 use bartender::ldap::client as ldap_client;
@@ -63,6 +65,20 @@ async fn main() -> Result<(), sqlx::Error> {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
+                .layer(
+                    CorsLayer::new()
+                        .allow_origin(Origin::list(vec![
+                            "http://localhost:3000".parse().unwrap(),
+                            "https://webdrink.csh.rit.edu".parse().unwrap(),
+                        ]))
+                        .allow_methods(vec![
+                            Method::GET,
+                            Method::POST,
+                            Method::PUT,
+                            Method::DELETE,
+                        ])
+                        .allow_headers(cors::Any),
+                )
                 .layer(Extension(ldap_client))
                 .layer(Extension(pg_pool))
                 .layer(Extension(oidc_client)),

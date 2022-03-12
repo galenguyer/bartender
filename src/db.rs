@@ -31,7 +31,8 @@ pub async fn get_slots_with_items(pool: &Pool<Postgres>) -> Result<Vec<models::S
         WHERE machine IN (
             SELECT id FROM machines 
                 WHERE active = true
-        )",
+        )
+        ORDER BY machine, number ASC",
     )
     .fetch_all(pool)
     .await
@@ -40,13 +41,13 @@ pub async fn get_slots_with_items(pool: &Pool<Postgres>) -> Result<Vec<models::S
 pub async fn get_active_machines(
     pool: &Pool<Postgres>,
 ) -> Result<Vec<models::Machine>, sqlx::Error> {
-    sqlx::query_as::<_, models::Machine>("SELECT * FROM machines WHERE active = true")
+    sqlx::query_as::<_, models::Machine>("SELECT * FROM machines WHERE active = true ORDER BY id ASC")
         .fetch_all(pool)
         .await
 }
 
 pub async fn get_all_machines(pool: &Pool<Postgres>) -> Result<Vec<models::Machine>, sqlx::Error> {
-    sqlx::query_as::<_, models::Machine>("SELECT * FROM machines")
+    sqlx::query_as::<_, models::Machine>("SELECT * FROM machines ORDER BY id ASC")
         .fetch_all(pool)
         .await
 }
