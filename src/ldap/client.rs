@@ -78,6 +78,29 @@ impl LdapClient {
         }
     }
 
+    pub async fn get_user_by_ibutton(&mut self, ibutton: &str) -> Option<LdapUser> {
+        self.ldap.with_timeout(std::time::Duration::from_secs(5));
+        let (results, _result) = self
+            .ldap
+            .search(
+                "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
+                ldap3::Scope::Subtree,
+                &format!("ibutton={ibutton}"),
+                vec!["*"],
+            )
+            .await
+            .unwrap()
+            .success()
+            .unwrap();
+
+        if results.len() == 1 {
+            let user = SearchEntry::construct(results.get(0).unwrap().to_owned());
+            Some(LdapUser::from_entry(&user))
+        } else {
+            None
+        }
+    }
+
     pub async fn update_user(&mut self, change_set: &LdapUserChangeSet) {
         let mut changes = Vec::new();
         if change_set.drinkBalance.is_some() {

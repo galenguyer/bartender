@@ -54,6 +54,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = Router::new()
         .route("/drinks", get(routes::compat::drinks::get_drinks))
         .route("/drinks/drop", post(routes::compat::drinks::drop))
+        .route("/users/credits", get(routes::compat::users::get_credits))
         .route("/auth_test", get(auth_test))
         .route("/ldap_test", get(ldap_test))
         .route("/search_users", get(users_search))
@@ -65,7 +66,7 @@ async fn main() -> Result<(), sqlx::Error> {
                 .layer(Extension(oidc_client)),
         );
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     info!("starting on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
