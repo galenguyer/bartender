@@ -61,6 +61,7 @@ async fn main() -> Result<(), sqlx::Error> {
             get(routes::compat::users::get_credits).put(routes::compat::users::set_credits),
         )
         .route("/slots", put(routes::compat::slots::update_slot_status))
+        .route("/items", get(routes::compat::items::get_items))
         .route("/auth_test", get(auth_test))
         .route("/search_users", get(users_search))
         .layer(

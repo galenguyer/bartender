@@ -105,6 +105,14 @@ pub async fn get_item(pool: &Pool<Postgres>, item_id: i32) -> Result<models::Ite
     .await
 }
 
+pub async fn get_items(pool: &Pool<Postgres>) -> Result<Vec<models::Item>, sqlx::Error> {
+    sqlx::query_as::<_, models::Item>(
+        "SELECT id,name,price FROM items",
+    )
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn get_slot_with_item(
     pool: &Pool<Postgres>,
     machine_id: i32,

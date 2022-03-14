@@ -321,6 +321,7 @@ pub async fn drop(
                 slot.count.unwrap_or(1) - 1
             );
         }
+        #[allow(clippy::collapsible_if)]
         if slot.count.unwrap_or(1) == 1 {
             if db::update_slot_active(&pool, machine.id, slot.number, false)
                 .await
