@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use axum::{
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 use log::info;
@@ -60,6 +60,7 @@ async fn main() -> Result<(), sqlx::Error> {
             "/users/credits",
             get(routes::compat::users::get_credits).put(routes::compat::users::set_credits),
         )
+        .route("/slots", put(routes::compat::slots::update_slot_status))
         .route("/auth_test", get(auth_test))
         .route("/search_users", get(users_search))
         .layer(

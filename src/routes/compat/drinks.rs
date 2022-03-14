@@ -88,6 +88,7 @@ pub async fn drop(
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
     Extension(mut ldap_client): Extension<LdapClient>,
 ) -> impl IntoResponse {
+    // TODO: Don't fucking hardcode this
     let user_id = "chef";
 
     debug!("Validating drop request by {}", user_id);
@@ -101,7 +102,7 @@ pub async fn drop(
     }
     if !unprovided.is_empty() {
         warn!(
-            "Rejecting response from {} to drop a drink, missing parameters {}",
+            "Rejecting request from {} to drop a drink, missing parameters {}",
             user_id,
             unprovided.iter().join(", ")
         );
@@ -121,7 +122,7 @@ pub async fn drop(
     let machine = db::get_machine(&pool, payload["machine"].as_str().unwrap()).await;
     if machine.is_err() {
         warn!(
-            "Rejecting response from {} to drop a drink, {} is not a valid machine",
+            "Rejecting request from {} to drop a drink, {} is not a valid machine",
             user_id,
             payload["machine"].as_str().unwrap()
         );
@@ -138,10 +139,11 @@ pub async fn drop(
     }
     let machine = machine.unwrap();
 
-    let slot = db::get_slot(&pool, machine.id, payload["slot"].as_i64().unwrap() as i32).await;
+    let slot =
+        db::get_slot_with_item(&pool, machine.id, payload["slot"].as_i64().unwrap() as i32).await;
     if slot.is_err() {
         warn!(
-            "Rejecting response from {} to drop a drink, machine {} does not have a slot with id {}",
+            "Rejecting request from {} to drop a drink, machine {} does not have a slot with id {}",
             user_id,
             payload["machine"].as_str().unwrap(),
             payload["slot"].as_i64().unwrap()
@@ -168,7 +170,7 @@ pub async fn drop(
     let machine_status = machine::get_status(&machine.name).await;
     if machine_status.is_err() {
         warn!(
-            "Rejecting response from {} to drop a drink, machine {} is not online",
+            "Rejecting request from {} to drop a drink, machine {} is not online",
             user_id,
             payload["machine"].as_str().unwrap(),
         );
@@ -189,7 +191,7 @@ pub async fn drop(
         || !(*machine_status.slots.get(slot.number as usize).unwrap()).stocked
     {
         warn!(
-            "Rejecting response from {} to drop a drink, machine {} slot {} is empty",
+            "Rejecting request from {} to drop a drink, machine {} slot {} is empty",
             user_id,
             payload["machine"].as_str().unwrap(),
             payload["slot"].as_i64().unwrap()
@@ -208,7 +210,7 @@ pub async fn drop(
     let user = ldap_client.get_user(user_id).await.unwrap();
     if user.drinkBalance.unwrap_or(0) < slot.price.into() {
         warn!(
-            "Rejecting response from {} to drop a drink, insufficient drink balance for {} (has {}, needs {})",
+            "Rejecting request from {} to drop a drink, insufficient drink balance for {} (has {}, needs {})",
             user_id,
             slot.name,
             user.drinkBalance.unwrap_or(0),

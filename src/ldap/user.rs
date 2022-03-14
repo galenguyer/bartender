@@ -65,12 +65,11 @@ pub fn get_groups(member_of: Vec<String>) -> Vec<String> {
     }
     member_of
         .iter()
-        .map(|group| match GROUP_REGEX.captures(group) {
-            Some(cap) => Some(cap["name"].to_owned()),
-            None => None,
+        .filter_map(|group| {
+            GROUP_REGEX
+                .captures(group)
+                .map(|cap| cap["name"].to_owned())
         })
-        .filter(|cap| cap.is_some())
-        .map(|cap| cap.unwrap())
         .collect()
 }
 
