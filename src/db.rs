@@ -128,7 +128,7 @@ pub async fn update_slot_count(
     slot_id: i32,
     new_count: i32,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query_as::<_, models::SlotWithItem>(
+    let _ = sqlx::query(
         "UPDATE slots 
                 SET count = $1
                 WHERE machine = $2 AND number = $3",
@@ -136,7 +136,7 @@ pub async fn update_slot_count(
     .bind(new_count)
     .bind(machine_id)
     .bind(slot_id)
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
     Ok(())
@@ -148,7 +148,7 @@ pub async fn update_slot_active(
     slot_id: i32,
     active: bool,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query_as::<_, models::SlotWithItem>(
+    let _ = sqlx::query(
         "UPDATE slots 
                 SET active = $1
                 WHERE machine = $2 AND number = $3",
@@ -156,7 +156,7 @@ pub async fn update_slot_active(
     .bind(active)
     .bind(machine_id)
     .bind(slot_id)
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
     Ok(())
@@ -167,7 +167,7 @@ pub async fn update_slot_item(
     slot_id: i32,
     item_id: i32,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query_as::<_, models::SlotWithItem>(
+    let _ = sqlx::query(
         "UPDATE slots 
                 SET item = $1
                 WHERE machine = $2 AND number = $3",
@@ -175,7 +175,7 @@ pub async fn update_slot_item(
     .bind(item_id)
     .bind(machine_id)
     .bind(slot_id)
-    .fetch_one(pool)
+    .execute(pool)
     .await?;
 
     Ok(())
