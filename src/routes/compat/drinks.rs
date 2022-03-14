@@ -308,12 +308,32 @@ pub async fn drop(
     };
     ldap_client.update_user(&change_set).await;
 
-    // Really shouldn't do this, but Mizu doesn't have any error handling here and we're aiming for compatiblity, so...
-    #[allow(unused_must_use)]
     if machine.name == "snack" {
-        db::update_slot_count(&pool, machine.id, slot.number, slot.count.unwrap_or(1) - 1).await;
+        if db::update_slot_count(&pool, machine.id, slot.number, slot.count.unwrap_or(1) - 1)
+            .await
+            .is_err()
+        {
+            error!(
+                "Error updating db after drop for {}, could not change machine {} slot {} count {}",
+                user_id,
+                payload["machine"].as_str().unwrap(),
+                payload["slot"].as_i64().unwrap(),
+                slot.count.unwrap_or(1) - 1
+            );
+        }
         if slot.count.unwrap_or(1) == 1 {
-            db::update_slot_active(&pool, machine.id, slot.number, false).await;
+            if db::update_slot_active(&pool, machine.id, slot.number, false)
+                .await
+                .is_err()
+            {
+                error!(
+                    "Error updating db after drop for {}, could not change machine {} slot {} active {}",
+                    user_id,
+                    payload["machine"].as_str().unwrap(),
+                    payload["slot"].as_i64().unwrap(),
+                    false
+                );
+            }
         }
     }
 

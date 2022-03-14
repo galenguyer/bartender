@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 use itertools::Itertools;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
@@ -109,26 +109,52 @@ pub async fn update_slot_status(
         machine.name, slot.number
     );
 
-    #[allow(unused_must_use)]
     if let Some(active) = active {
-        db::update_slot_active(&pool, machine.id, slot.number, active).await;
-        debug!(
-            "Updated machine {} slot {} active: {} -> {}",
-            machine.name, slot.number, slot.active, active
-        );
+        match db::update_slot_active(&pool, machine.id, slot.number, active).await {
+            Ok(_) => {
+                debug!(
+                    "Updated machine {} slot {} active: {} -> {}",
+                    machine.name, slot.number, slot.active, active
+                );
+            }
+            Err(e) => {
+                error!("Failed to process request from {} to update machine {} slot {}: set active to {}", user_id, machine.name, slot.number, active);
+                error!("Error: {:#?}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "error": "Could not update slot",
+                        "errorCode": 500,
+                        "message": "Contact a drink admin"
+                    })),
+                );
+            }
+        }
     }
 
-    #[allow(unused_must_use)]
     if let Some(item_id) = item_id {
         let item = db::get_item(&pool, item_id as i32).await;
         match item {
-            Ok(item) => {
-                db::update_slot_item(&pool, machine.id, slot.number, item.id).await;
-                debug!(
-                    "Updated machine {} slot {} item: {} -> {}",
-                    machine.name, slot.number, slot.item, item.id
-                );
-            }
+            Ok(item) => match db::update_slot_item(&pool, machine.id, slot.number, item.id).await {
+                Ok(_) => {
+                    debug!(
+                        "Updated machine {} slot {} item: {} -> {}",
+                        machine.name, slot.number, slot.item, item.id
+                    );
+                }
+                Err(e) => {
+                    error!("Failed to process request from {} to update machine {} slot {}: set item to {}", user_id, machine.name, slot.number, item_id);
+                    error!("Error: {:#?}", e);
+                    return (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({
+                            "error": "Could not update slot",
+                            "errorCode": 500,
+                            "message": "Contact a drink admin"
+                        })),
+                    );
+                }
+            },
             Err(_) => {
                 return (
                     StatusCode::BAD_REQUEST,
@@ -140,7 +166,6 @@ pub async fn update_slot_status(
         }
     }
 
-    #[allow(unused_must_use)]
     if let Some(count) = body["count"].as_i64() {
         if count < 0 {
             return (
@@ -152,14 +177,29 @@ pub async fn update_slot_status(
             );
         }
 
-        db::update_slot_count(&pool, machine.id, slot.number, count as i32).await;
-        debug!(
-            "Updated machine {} slot {} count: {} -> {}",
-            machine.name,
-            slot.number,
-            slot.count.unwrap_or(-1),
-            count
-        );
+        match db::update_slot_count(&pool, machine.id, slot.number, count as i32).await {
+            Ok(_) => {
+                debug!(
+                    "Updated machine {} slot {} count: {} -> {}",
+                    machine.name,
+                    slot.number,
+                    slot.count.unwrap_or(-1),
+                    count
+                );
+            }
+            Err(e) => {
+                error!("Failed to process request from {} to update machine {} slot {}: set count to {}", user_id, machine.name, slot.number, count);
+                error!("Error: {:#?}", e);
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "error": "Could not update slot",
+                        "errorCode": 500,
+                        "message": "Contact a drink admin"
+                    })),
+                );
+            }
+        }
     }
 
     let slot = db::get_slot(&pool, machine.id, slot.number).await.unwrap();
