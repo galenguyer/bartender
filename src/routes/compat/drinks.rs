@@ -93,7 +93,6 @@ pub async fn drop(
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
     Extension(mut ldap_client): Extension<LdapClient>,
 ) -> impl IntoResponse {
-    // TODO: Don't fucking hardcode this
     let user_id = user.preferred_username;
 
     debug!("Validating drop request by {}", user_id);
@@ -211,8 +210,16 @@ pub async fn drop(
     }
 
     debug!("Checking drink credits for {}", user_id);
-    // TODO: FIX THIS OMG
-    let user = ldap_client.get_user(&user_id).await.unwrap();
+    let user = ldap_client.get_user(&user_id).await;
+    if user.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "message": format!("Could not find an account with the username '{}'", user_id)
+            }))
+        )
+    }
+    let user = user.unwrap();
     if user.drinkBalance.unwrap_or(0) < slot.price.into() {
         warn!(
             "Rejecting request from {} to drop a drink, insufficient drink balance for {} (has {}, needs {})",
