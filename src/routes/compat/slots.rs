@@ -62,7 +62,7 @@ pub async fn update_slot_status(
         );
     }
 
-    let machine = db::get_machine(&pool, machine_name.unwrap()).await;
+    let machine = db::machines::get_machine(&pool, machine_name.unwrap()).await;
     if machine.is_err() {
         warn!(
             "Rejecting request from {} to update a slot, machine '{}' does not exist",
@@ -83,7 +83,7 @@ pub async fn update_slot_status(
     let machine = machine.unwrap();
     debug!("Validated existence of machine {}", machine.name);
 
-    let slot = db::get_slot(&pool, machine.id, slot_id.unwrap() as i32).await;
+    let slot = db::slots::get_slot(&pool, machine.id, slot_id.unwrap() as i32).await;
     if slot.is_err() {
         warn!(
             "Rejecting request from {} to update a slot, machine '{}' does not have a slot number '{}'",
@@ -110,7 +110,7 @@ pub async fn update_slot_status(
     );
 
     if let Some(active) = active {
-        match db::update_slot_active(&pool, machine.id, slot.number, active).await {
+        match db::slots::update_slot_active(&pool, machine.id, slot.number, active).await {
             Ok(_) => {
                 debug!(
                     "Updated machine {} slot {} active: {} -> {}",
@@ -133,28 +133,30 @@ pub async fn update_slot_status(
     }
 
     if let Some(item_id) = item_id {
-        let item = db::get_item(&pool, item_id as i32).await;
+        let item = db::items::get_item(&pool, item_id as i32).await;
         match item {
-            Ok(item) => match db::update_slot_item(&pool, machine.id, slot.number, item.id).await {
-                Ok(_) => {
-                    debug!(
-                        "Updated machine {} slot {} item: {} -> {}",
-                        machine.name, slot.number, slot.item, item.id
-                    );
+            Ok(item) => {
+                match db::slots::update_slot_item(&pool, machine.id, slot.number, item.id).await {
+                    Ok(_) => {
+                        debug!(
+                            "Updated machine {} slot {} item: {} -> {}",
+                            machine.name, slot.number, slot.item, item.id
+                        );
+                    }
+                    Err(e) => {
+                        error!("Failed to process request from {} to update machine {} slot {}: set item to {}", user_id, machine.name, slot.number, item_id);
+                        error!("Error: {:#?}", e);
+                        return (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(json!({
+                                "error": "Could not update slot",
+                                "errorCode": 500,
+                                "message": "Contact a drink admin"
+                            })),
+                        );
+                    }
                 }
-                Err(e) => {
-                    error!("Failed to process request from {} to update machine {} slot {}: set item to {}", user_id, machine.name, slot.number, item_id);
-                    error!("Error: {:#?}", e);
-                    return (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(json!({
-                            "error": "Could not update slot",
-                            "errorCode": 500,
-                            "message": "Contact a drink admin"
-                        })),
-                    );
-                }
-            },
+            }
             Err(_) => {
                 return (
                     StatusCode::BAD_REQUEST,
@@ -177,7 +179,7 @@ pub async fn update_slot_status(
             );
         }
 
-        match db::update_slot_count(&pool, machine.id, slot.number, count as i32).await {
+        match db::slots::update_slot_count(&pool, machine.id, slot.number, count as i32).await {
             Ok(_) => {
                 debug!(
                     "Updated machine {} slot {} count: {} -> {}",
@@ -202,7 +204,9 @@ pub async fn update_slot_status(
         }
     }
 
-    let slot = db::get_slot(&pool, machine.id, slot.number).await.unwrap();
+    let slot = db::slots::get_slot(&pool, machine.id, slot.number)
+        .await
+        .unwrap();
     info!(
         "Refreshed machine {} slot {} information for {}",
         machine.name, slot.number, user_id

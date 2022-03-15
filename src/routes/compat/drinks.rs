@@ -20,14 +20,14 @@ pub async fn get_drinks(
     OIDCAuth(_user): OIDCAuth,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    let machines = db::get_active_machines(&pool).await.unwrap();
+    let machines = db::machines::get_active_machines(&pool).await.unwrap();
     let futures: FuturesOrdered<_> = machines
         .iter()
         .map(|m| machine::get_status(&m.name))
         .collect();
     let machine_states: Vec<Result<machine::MachineResponse, reqwest::Error>> =
         futures.collect().await;
-    let slots = db::get_slots_with_items(&pool).await.unwrap();
+    let slots = db::slots::get_slots_with_items(&pool).await.unwrap();
     let resp =
         DrinkResponse {
             machines: machines
@@ -123,7 +123,7 @@ pub async fn drop(
     }
 
     debug!("Fetching database info for drop request by {}", user_id);
-    let machine = db::get_machine(&pool, payload["machine"].as_str().unwrap()).await;
+    let machine = db::machines::get_machine(&pool, payload["machine"].as_str().unwrap()).await;
     if machine.is_err() {
         warn!(
             "Rejecting request from {} to drop a drink, {} is not a valid machine",
@@ -144,7 +144,8 @@ pub async fn drop(
     let machine = machine.unwrap();
 
     let slot =
-        db::get_slot_with_item(&pool, machine.id, payload["slot"].as_i64().unwrap() as i32).await;
+        db::slots::get_slot_with_item(&pool, machine.id, payload["slot"].as_i64().unwrap() as i32)
+            .await;
     if slot.is_err() {
         warn!(
             "Rejecting request from {} to drop a drink, machine {} does not have a slot with id {}",
@@ -216,8 +217,8 @@ pub async fn drop(
             StatusCode::UNAUTHORIZED,
             Json(json!({
                 "message": format!("Could not find an account with the username '{}'", user_id)
-            }))
-        )
+            })),
+        );
     }
     let user = user.unwrap();
     if user.drinkBalance.unwrap_or(0) < slot.price.into() {
@@ -321,7 +322,7 @@ pub async fn drop(
     ldap_client.update_user(&change_set).await;
 
     if machine.name == "snack" {
-        if db::update_slot_count(&pool, machine.id, slot.number, slot.count.unwrap_or(1) - 1)
+        if db::slots::update_slot_count(&pool, machine.id, slot.number, slot.count.unwrap_or(1) - 1)
             .await
             .is_err()
         {
@@ -335,7 +336,7 @@ pub async fn drop(
         }
         #[allow(clippy::collapsible_if)]
         if slot.count.unwrap_or(1) == 1 {
-            if db::update_slot_active(&pool, machine.id, slot.number, false)
+            if db::slots::update_slot_active(&pool, machine.id, slot.number, false)
                 .await
                 .is_err()
             {

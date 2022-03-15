@@ -9,7 +9,7 @@ use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
 pub async fn get_items(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl IntoResponse {
-    match db::get_items(&pool).await {
+    match db::items::get_items(&pool).await {
         Ok(items) => (
             StatusCode::OK,
             Json(json!({
@@ -67,7 +67,7 @@ pub async fn post_items(
         );
     }
 
-    match db::create_item(&pool, name, price as i32).await {
+    match db::items::create_item(&pool, name, price as i32).await {
         Ok(_) => (
             StatusCode::CREATED,
             Json(json!({
@@ -120,7 +120,7 @@ pub async fn put_items(
         );
     }
 
-    let old_item = db::get_item(&pool, id as i32).await;
+    let old_item = db::items::get_item(&pool, id as i32).await;
     if old_item.is_err() {
         return (
             StatusCode::BAD_REQUEST,
@@ -141,7 +141,7 @@ pub async fn put_items(
             );
         }
 
-        let _ = db::update_item_price(&pool, old_item.id, price as i32).await;
+        let _ = db::items::update_item_price(&pool, old_item.id, price as i32).await;
     }
     if let Some(name) = name {
         if name.is_empty() {
@@ -153,10 +153,10 @@ pub async fn put_items(
             );
         }
 
-        let _ = db::update_item_name(&pool, old_item.id, name).await;
+        let _ = db::items::update_item_name(&pool, old_item.id, name).await;
     }
 
-    let item = db::get_item(&pool, id as i32).await.unwrap();
+    let item = db::items::get_item(&pool, id as i32).await.unwrap();
 
     (
         StatusCode::OK,
@@ -182,7 +182,7 @@ pub async fn delete_items(
     }
     let id = id.unwrap() as i32;
 
-    let item = db::get_item(&pool, id as i32).await;
+    let item = db::items::get_item(&pool, id as i32).await;
     if item.is_err() {
         return (
             StatusCode::BAD_REQUEST,
@@ -193,7 +193,7 @@ pub async fn delete_items(
     }
     let item = item.unwrap();
 
-    let _ = db::delete_item(&pool, item.id).await;
+    let _ = db::items::delete_item(&pool, item.id).await;
 
     (
         StatusCode::OK,
