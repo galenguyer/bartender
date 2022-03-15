@@ -61,7 +61,13 @@ async fn main() -> Result<(), sqlx::Error> {
             get(routes::compat::users::get_credits).put(routes::compat::users::set_credits),
         )
         .route("/slots", put(routes::compat::slots::update_slot_status))
-        .route("/items", get(routes::compat::items::get_items))
+        .route(
+            "/items",
+            get(routes::compat::items::get_items)
+                .post(routes::compat::items::post_items)
+                .put(routes::compat::items::put_items)
+                .delete(routes::compat::items::delete_items),
+        )
         .route("/auth_test", get(auth_test))
         .route("/search_users", get(users_search))
         .layer(
