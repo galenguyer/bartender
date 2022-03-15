@@ -52,6 +52,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // Map routes to handlers
     let app = Router::new()
+        .route("/", get(routes::compat::root::root))
         .route("/drinks", get(routes::compat::drinks::get_drinks))
         .route("/drinks/drop", post(routes::compat::drinks::drop))
         .route("/users", get(routes::compat::users::get_users))
