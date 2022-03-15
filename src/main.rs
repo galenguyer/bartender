@@ -1,16 +1,11 @@
-use axum::extract::{Extension, Query};
+use axum::extract::Extension;
 use axum::http::Method;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::Json;
 use axum::{
     routing::{get, post, put},
     Router,
 };
 use log::info;
-use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
-use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -19,7 +14,7 @@ use tower_http::cors::{self, CorsLayer, Origin};
 use tower_http::trace::TraceLayer;
 
 use bartender::ldap::client as ldap_client;
-use bartender::oidc::{auth::OIDCAuth, client as oidc_client};
+use bartender::oidc::client as oidc_client;
 use bartender::routes;
 
 #[tokio::main]
@@ -96,6 +91,7 @@ async fn main() -> Result<(), sqlx::Error> {
 }
 
 // For later references
+//
 // async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
 //     format!("{:#?}", user)
 // }

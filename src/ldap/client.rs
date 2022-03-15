@@ -121,7 +121,7 @@ impl LdapClient {
                 "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
                 ldap3::Scope::Subtree,
                 &format!("ibutton={ibutton}"),
-                vec!["*"],
+                SEARCH_ATTRS,
             )
             .await
             .unwrap()

@@ -4,6 +4,7 @@ use axum::extract::FromRequest;
 use axum::http::StatusCode;
 use axum::BoxError;
 use serde_json::json;
+use std::env;
 
 pub struct OIDCAuth(pub user::OIDCUser);
 
@@ -42,10 +43,34 @@ where
                 }
             }
             None => {
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    axum::Json(json!({"error": "missing auth header"})),
-                ))
+                let machine_secret = req
+                    .headers()
+                    .and_then(|headers| headers.get("X-Auth-Token"))
+                    .and_then(|value| value.to_str().ok());
+
+                match machine_secret {
+                    Some(secret) => {
+                        if secret == env::var("MACHINE_SECRET").unwrap() {
+                            Ok(Self(user::OIDCUser {
+                                name: Some(String::from("Drink Machine")),
+                                preferred_username: String::from("drink_machine"),
+                                groups: Box::new([String::from("drink")]),
+                                drink_balance: Some(0),
+                            }))
+                        } else {
+                            return Err((
+                                StatusCode::UNAUTHORIZED,
+                                axum::Json(json!({"error": "invalid machine secret"})),
+                            ));
+                        }
+                    }
+                    None => {
+                        return Err((
+                            StatusCode::UNAUTHORIZED,
+                            axum::Json(json!({"error": "missing auth header"})),
+                        ))
+                    }
+                }
             }
         }
     }

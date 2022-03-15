@@ -2,6 +2,7 @@ use crate::db;
 use crate::ldap::client::LdapClient;
 use crate::ldap::user::LdapUserChangeSet;
 use crate::machine;
+use crate::oidc::auth::OIDCAuth;
 use crate::{DrinkResponse, Item, Machine, Slot};
 use axum::extract::Extension;
 use axum::http::StatusCode;
@@ -15,7 +16,10 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
-pub async fn get_drinks(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl IntoResponse {
+pub async fn get_drinks(
+    OIDCAuth(_user): OIDCAuth,
+    Extension(pool): Extension<Arc<Pool<Postgres>>>,
+) -> impl IntoResponse {
     let machines = db::get_active_machines(&pool).await.unwrap();
     let futures: FuturesOrdered<_> = machines
         .iter()
@@ -84,12 +88,13 @@ pub async fn get_drinks(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl
 }
 
 pub async fn drop(
+    OIDCAuth(user): OIDCAuth,
     Json(payload): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
     Extension(mut ldap_client): Extension<LdapClient>,
 ) -> impl IntoResponse {
     // TODO: Don't fucking hardcode this
-    let user_id = "chef";
+    let user_id = user.preferred_username;
 
     debug!("Validating drop request by {}", user_id);
     let mut unprovided: Vec<String> = Vec::new();
@@ -207,7 +212,7 @@ pub async fn drop(
 
     debug!("Checking drink credits for {}", user_id);
     // TODO: FIX THIS OMG
-    let user = ldap_client.get_user(user_id).await.unwrap();
+    let user = ldap_client.get_user(&user_id).await.unwrap();
     if user.drinkBalance.unwrap_or(0) < slot.price.into() {
         warn!(
             "Rejecting request from {} to drop a drink, insufficient drink balance for {} (has {}, needs {})",

@@ -22,7 +22,7 @@ pub async fn get_status(name: &str) -> Result<MachineResponse, reqwest::Error> {
 
     let mut res = client
         .get(format!("https://{}.csh.rit.edu/slots", name))
-        .header("X-Auth-Token", env::var("MACHINE_API_TOKEN").unwrap())
+        .header("X-Auth-Token", env::var("MACHINE_SECRET").unwrap())
         .timeout(Duration::from_secs(5))
         .send()
         .await?
@@ -39,7 +39,7 @@ pub async fn drop(name: &str, slot: i32) -> Result<reqwest::Response, reqwest::E
 
     client
         .post(format!("https://{}.csh.rit.edu/drop", name))
-        .header("X-Auth-Token", env::var("MACHINE_API_TOKEN").unwrap())
+        .header("X-Auth-Token", env::var("MACHINE_SECRET").unwrap())
         .timeout(Duration::from_secs(5))
         .json(&body)
         .send()
