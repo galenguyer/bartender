@@ -68,8 +68,6 @@ async fn main() -> Result<(), sqlx::Error> {
                 .put(routes::compat::items::put_items)
                 .delete(routes::compat::items::delete_items),
         )
-        .route("/auth_test", get(auth_test))
-        .route("/search_users", get(users_search))
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
@@ -97,22 +95,23 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
-    format!("{:#?}", user)
-}
+// For later references
+// async fn auth_test(OIDCAuth(user): OIDCAuth) -> impl IntoResponse {
+//     format!("{:#?}", user)
+// }
 
-async fn users_search(
-    Extension(mut ldap): Extension<ldap_client::LdapClient>,
-    Query(params): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
-    let query = params.get("query").map(|id| id.to_owned());
-    if query.is_none() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(json!({"error":"no query given"})),
-        );
-    }
+// async fn users_search(
+//     Extension(mut ldap): Extension<ldap_client::LdapClient>,
+//     Query(params): Query<HashMap<String, String>>,
+// ) -> impl IntoResponse {
+//     let query = params.get("query").map(|id| id.to_owned());
+//     if query.is_none() {
+//         return (
+//             StatusCode::BAD_REQUEST,
+//             Json(json!({"error":"no query given"})),
+//         );
+//     }
 
-    let users = ldap.search_users(&query.clone().unwrap()).await;
-    (StatusCode::OK, Json(json!(users)))
-}
+//     let users = ldap.search_users(&query.clone().unwrap()).await;
+//     (StatusCode::OK, Json(json!(users)))
+// }
