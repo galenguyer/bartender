@@ -23,12 +23,13 @@ async fn main() -> Result<(), sqlx::Error> {
     dotenv::dotenv().ok();
     // Set logging levels if not already set
     if env::var_os("RUST_LOG").is_none() {
-        env::set_var("RUST_LOG", "bartender=debug,tower_http=debug,tokio=debug");
+        env::set_var("RUST_LOG", "bartender=debug,tower_http=info");
     }
 
     // Initialize tracing with previously set logging levels
     tracing_subscriber::fmt::init();
 
+    // Connect to Postgres
     let pg_pool = Arc::new(
         PgPoolOptions::new()
             .max_connections(5)
@@ -37,9 +38,11 @@ async fn main() -> Result<(), sqlx::Error> {
     );
     info!("Postgres pool initialized");
 
+    // Create an OIDC client
     let oidc_client = oidc_client::OIDCClient::new();
     info!("OIDC client initialized");
 
+    // Create an LDAP client
     let ldap_client = ldap_client::LdapClient::new(
         &env::var("LDAP_BIND_DN").unwrap(),
         &env::var("LDAP_BIND_PW").unwrap(),
@@ -47,6 +50,7 @@ async fn main() -> Result<(), sqlx::Error> {
     .await;
     info!("LDAP client initialized");
 
+    // Map routes to handlers
     let app = Router::new()
         .route("/drinks", get(routes::compat::drinks::get_drinks))
         .route("/drinks/drop", post(routes::compat::drinks::drop))
@@ -80,6 +84,8 @@ async fn main() -> Result<(), sqlx::Error> {
                 .layer(Extension(oidc_client)),
         );
 
+    // Bind and serve
+    // TODO: Optionally read this from configuration
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     info!("Listening on http://{}", addr);
     axum::Server::bind(&addr)

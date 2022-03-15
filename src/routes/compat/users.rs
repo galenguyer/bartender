@@ -1,5 +1,6 @@
 use crate::ldap::client::LdapClient;
 use crate::ldap::user::LdapUserChangeSet;
+use crate::oidc::auth::OIDCAuth;
 use axum::extract::{Extension, Query};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -8,7 +9,20 @@ use itertools::Itertools;
 use serde_json::json;
 use std::collections::HashMap;
 
-pub async fn get_users(Extension(mut ldap): Extension<LdapClient>) -> impl IntoResponse {
+pub async fn get_users(
+    OIDCAuth(user): OIDCAuth,
+    Extension(mut ldap): Extension<LdapClient>,
+) -> impl IntoResponse {
+    if !user.is_drink_admin() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
     let users = ldap._do_not_use_get_all_users().await;
     return (
         StatusCode::OK,
@@ -20,6 +34,7 @@ pub async fn get_users(Extension(mut ldap): Extension<LdapClient>) -> impl IntoR
 }
 
 pub async fn get_credits(
+    OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
     Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
@@ -28,6 +43,17 @@ pub async fn get_credits(
 
     if uid.is_some() {
         let uid = uid.unwrap();
+
+        if !user.is_drink_admin() && user.preferred_username != uid {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({
+                    "error": "User does not have the correct permissions",
+                    "errorCode": 401
+                })),
+            );
+        }
+
         let user = ldap.get_user(&uid).await;
         if user.is_none() {
             return (
@@ -50,6 +76,16 @@ pub async fn get_credits(
             })),
         );
     } else if ibutton.is_some() {
+        if !user.is_drink_admin() {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({
+                    "error": "User does not have the correct permissions",
+                    "errorCode": 401
+                })),
+            );
+        }
+
         let ibutton = ibutton.unwrap();
         let user = ldap.get_user_by_ibutton(&ibutton).await;
         if user.is_none() {

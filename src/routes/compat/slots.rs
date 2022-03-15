@@ -1,4 +1,5 @@
 use crate::db;
+use crate::oidc::auth::OIDCAuth;
 use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -10,10 +11,21 @@ use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
 pub async fn update_slot_status(
+    OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    let user_id = "chef";
+    if !user.is_drink_admin() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
+    let user_id = user.preferred_username;
 
     let machine_name = body["machine"].as_str();
     let slot_id = body["slot"].as_i64();

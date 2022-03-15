@@ -1,4 +1,5 @@
 use crate::db;
+use crate::oidc::auth::OIDCAuth;
 use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -8,7 +9,10 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
-pub async fn get_items(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl IntoResponse {
+pub async fn get_items(
+    OIDCAuth(_user): OIDCAuth,
+    Extension(pool): Extension<Arc<Pool<Postgres>>>,
+) -> impl IntoResponse {
     match db::items::get_items(&pool).await {
         Ok(items) => (
             StatusCode::OK,
@@ -28,9 +32,20 @@ pub async fn get_items(Extension(pool): Extension<Arc<Pool<Postgres>>>) -> impl 
 }
 
 pub async fn post_items(
+    OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
+    if !user.is_drink_admin() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
     let name = body["name"].as_str();
     let price = body["price"].as_i64();
 
@@ -94,9 +109,20 @@ pub async fn post_items(
 }
 
 pub async fn put_items(
+    OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
+    if !user.is_drink_admin() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
     let id = body["id"].as_i64();
     if id.is_none() {
         return (
@@ -168,9 +194,20 @@ pub async fn put_items(
 }
 
 pub async fn delete_items(
+    OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
+    if !user.is_drink_admin() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
     let id = body["id"].as_i64();
     if id.is_none() {
         return (
