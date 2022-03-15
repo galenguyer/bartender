@@ -86,7 +86,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // Bind and serve
     // TODO: Optionally read this from configuration
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
     info!("Listening on http://{}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
