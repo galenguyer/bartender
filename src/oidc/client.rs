@@ -7,6 +7,7 @@ pub struct OIDCClient {
 }
 
 impl OIDCClient {
+    #[must_use]
     pub fn new() -> Self {
         OIDCClient {
             http_client: reqwest::Client::new(),

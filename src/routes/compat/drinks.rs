@@ -274,20 +274,19 @@ pub async fn drop(
                     json!({"error": "Connection to the drink machine timed out!", "errorCode": 500}),
                 ),
             );
-        } else {
-            error!(
-                "Error dropping drink for {}, an unknown error occured occured dropping a drink from machine {} slot {}",
-                user_id,
-                payload["machine"].as_str().unwrap(),
-                payload["slot"].as_i64().unwrap()
-            );
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(
-                    json!({"error": "An unknown error occured while trying to drop a drink", "errorCode": 500}),
-                ),
-            );
         }
+        error!(
+            "Error dropping drink for {}, an unknown error occured occured dropping a drink from machine {} slot {}",
+            user_id,
+            payload["machine"].as_str().unwrap(),
+            payload["slot"].as_i64().unwrap()
+        );
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(
+                json!({"error": "An unknown error occured while trying to drop a drink", "errorCode": 500}),
+            ),
+        );
     }
 
     let drop_response = drop_response.unwrap();

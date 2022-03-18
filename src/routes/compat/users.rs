@@ -106,14 +106,13 @@ pub async fn get_credits(
                 }
             })),
         );
-    } else {
+    }
         (
             StatusCode::BAD_REQUEST,
             Json(
                 json!({"message":"Please provide a valid CSH uid or ibutton value as a URI parameter."}),
             ),
         )
-    }
 }
 
 pub async fn set_credits(

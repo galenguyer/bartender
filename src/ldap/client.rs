@@ -73,7 +73,7 @@ impl LdapClient {
         results
             .iter()
             .map(|result| {
-                let user = SearchEntry::construct(result.to_owned());
+                let user = SearchEntry::construct(result.clone());
                 LdapUser::from_entry(&user)
             })
             .collect()
@@ -131,7 +131,7 @@ impl LdapClient {
             changes.push(Mod::Replace(
                 String::from("drinkBalance"),
                 HashSet::from([change_set.drinkBalance.unwrap().to_string()]),
-            ))
+            ));
         }
         match self.ldap.modify(&change_set.dn, changes).await {
             Ok(_) => {}

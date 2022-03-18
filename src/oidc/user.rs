@@ -10,6 +10,7 @@ pub struct OIDCUser {
 }
 
 impl OIDCUser {
+    #[must_use]
     pub fn is_drink_admin(&self) -> bool {
         self.groups.iter().contains(&String::from("drink"))
     }

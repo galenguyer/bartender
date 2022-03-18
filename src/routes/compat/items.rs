@@ -51,10 +51,10 @@ pub async fn post_items(
 
     let mut unprovided: Vec<String> = Vec::new();
 
-    if body.get("name").is_none() || name.is_none() {
+    if name.is_none() {
         unprovided.push(String::from("name"));
     }
-    if body.get("price").is_none() || price.is_none() {
+    if price.is_none() {
         unprovided.push(String::from("price"));
     }
     if !unprovided.is_empty() {

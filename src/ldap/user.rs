@@ -21,6 +21,7 @@ pub struct LdapUser {
 }
 
 impl LdapUser {
+    #[must_use]
     pub fn from_entry(entry: &SearchEntry) -> Self {
         let user_attrs = &entry.attrs;
         LdapUser {
@@ -58,6 +59,7 @@ where
     }
 }
 
+#[must_use]
 pub fn get_groups(member_of: Vec<String>) -> Vec<String> {
     lazy_static! {
         static ref GROUP_REGEX: Regex =
