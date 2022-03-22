@@ -16,6 +16,7 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
+// GET /drinks
 pub async fn get_drinks(
     OIDCAuth(_user): OIDCAuth,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
@@ -87,6 +88,7 @@ pub async fn get_drinks(
     Json(resp)
 }
 
+// POST /drinks/drop
 pub async fn drop(
     OIDCAuth(user): OIDCAuth,
     Json(payload): Json<serde_json::Value>,

@@ -1,6 +1,7 @@
 use axum::response::{IntoResponse, Redirect};
 use std::env;
 
+// GET /
 pub async fn root() -> impl IntoResponse {
     Redirect::temporary(
         env::var("WEBDRINK_URL")

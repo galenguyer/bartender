@@ -9,6 +9,7 @@ use itertools::Itertools;
 use serde_json::json;
 use std::collections::HashMap;
 
+// GET /users
 pub async fn get_users(
     OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
@@ -33,6 +34,7 @@ pub async fn get_users(
     );
 }
 
+// GET /users/credits
 pub async fn get_credits(
     OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
@@ -107,14 +109,15 @@ pub async fn get_credits(
             })),
         );
     }
-        (
-            StatusCode::BAD_REQUEST,
-            Json(
-                json!({"message":"Please provide a valid CSH uid or ibutton value as a URI parameter."}),
-            ),
-        )
+    (
+        StatusCode::BAD_REQUEST,
+        Json(
+            json!({"message":"Please provide a valid CSH uid or ibutton value as a URI parameter."}),
+        ),
+    )
 }
 
+// PUT /users/credits
 pub async fn set_credits(
     Extension(mut ldap): Extension<LdapClient>,
     Json(body): Json<serde_json::Value>,

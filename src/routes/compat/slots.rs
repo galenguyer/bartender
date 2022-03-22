@@ -10,6 +10,7 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
+// PUT /slots
 pub async fn update_slot_status(
     OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,

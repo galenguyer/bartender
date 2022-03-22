@@ -9,6 +9,7 @@ use serde_json::json;
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
+// GET /items
 pub async fn get_items(
     OIDCAuth(_user): OIDCAuth,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
@@ -31,6 +32,7 @@ pub async fn get_items(
     }
 }
 
+// POST /items
 pub async fn post_items(
     OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
@@ -108,6 +110,7 @@ pub async fn post_items(
     }
 }
 
+// PUT /items
 pub async fn put_items(
     OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
@@ -193,6 +196,7 @@ pub async fn put_items(
     )
 }
 
+// DELETE /items
 pub async fn delete_items(
     OIDCAuth(user): OIDCAuth,
     Json(body): Json<serde_json::Value>,
