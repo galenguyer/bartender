@@ -56,7 +56,7 @@ pub async fn update_slot_count(
     slot_id: i32,
     new_count: i32,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query(
+    sqlx::query(
         "UPDATE slots 
                 SET count = $1
                 WHERE machine = $2 AND number = $3",
@@ -76,7 +76,7 @@ pub async fn update_slot_active(
     slot_id: i32,
     active: bool,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query(
+    sqlx::query(
         "UPDATE slots 
                 SET active = $1
                 WHERE machine = $2 AND number = $3",
@@ -95,7 +95,7 @@ pub async fn update_slot_item(
     slot_id: i32,
     item_id: i32,
 ) -> Result<(), sqlx::Error> {
-    let _ = sqlx::query(
+    sqlx::query(
         "UPDATE slots 
                 SET item = $1
                 WHERE machine = $2 AND number = $3",
