@@ -38,7 +38,7 @@ pub async fn post_items(
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    if !user.is_drink_admin() {
+    if !user.has_group("drink") {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({
@@ -116,7 +116,7 @@ pub async fn put_items(
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    if !user.is_drink_admin() {
+    if !user.has_group("drink") {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({
@@ -202,7 +202,7 @@ pub async fn delete_items(
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    if !user.is_drink_admin() {
+    if !user.has_group("drink") {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({

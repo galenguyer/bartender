@@ -16,7 +16,7 @@ pub async fn update_slot_status(
     Json(body): Json<serde_json::Value>,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
 ) -> impl IntoResponse {
-    if !user.is_drink_admin() {
+    if !user.has_group("drink") {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({

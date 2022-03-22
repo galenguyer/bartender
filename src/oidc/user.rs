@@ -11,7 +11,7 @@ pub struct OIDCUser {
 
 impl OIDCUser {
     #[must_use]
-    pub fn is_drink_admin(&self) -> bool {
-        self.groups.iter().contains(&String::from("drink"))
+    pub fn has_group(&self, group_name: &str) -> bool {
+        self.groups.iter().contains(&group_name.to_owned())
     }
 }

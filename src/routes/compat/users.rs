@@ -14,7 +14,7 @@ pub async fn get_users(
     OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
 ) -> impl IntoResponse {
-    if !user.is_drink_admin() {
+    if !user.has_group("drink") {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({
@@ -46,7 +46,7 @@ pub async fn get_credits(
     if uid.is_some() {
         let uid = uid.unwrap();
 
-        if !user.is_drink_admin() && user.preferred_username != uid {
+        if !user.has_group("drink") && user.preferred_username != uid {
             return (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({
@@ -78,7 +78,7 @@ pub async fn get_credits(
             })),
         );
     } else if ibutton.is_some() {
-        if !user.is_drink_admin() {
+        if !user.has_group("drink") {
             return (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({

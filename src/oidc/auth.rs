@@ -1,3 +1,4 @@
+use super::client::OIDCClient;
 use super::user;
 use axum::async_trait;
 use axum::extract::FromRequest;
@@ -20,6 +21,7 @@ where
     async fn from_request(
         req: &mut axum::extract::RequestParts<B>,
     ) -> Result<Self, Self::Rejection> {
+        // Grab the "Authorization" header from the request
         let auth_header = req
             .headers()
             .and_then(|headers| headers.get(axum::http::header::AUTHORIZATION))
@@ -27,8 +29,8 @@ where
 
         match auth_header {
             Some(header) => {
-                let oidc_client: &crate::oidc::client::OIDCClient =
-                    &*req.extensions().unwrap().get().unwrap();
+                // Get the OIDClient from the request global state
+                let oidc_client: &OIDCClient = &*req.extensions().unwrap().get().unwrap();
 
                 match oidc_client.validate_token(header).await {
                     Ok(user) => {
@@ -43,6 +45,7 @@ where
                 }
             }
             None => {
+                // If there's no "Authorization" header, get the "X-Auth-Token" header
                 let machine_secret = req
                     .headers()
                     .and_then(|headers| headers.get("X-Auth-Token"))
@@ -64,6 +67,7 @@ where
                             ));
                         }
                     }
+                    // There's no known auth header at all
                     None => {
                         return Err((
                             StatusCode::UNAUTHORIZED,
