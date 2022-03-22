@@ -40,7 +40,7 @@ pub async fn drop(name: &str, slot: i32) -> Result<reqwest::Response, reqwest::E
     client
         .post(format!("https://{}.csh.rit.edu/drop", name))
         .header("X-Auth-Token", env::var("MACHINE_SECRET").unwrap())
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(15))
         .json(&body)
         .send()
         .await
