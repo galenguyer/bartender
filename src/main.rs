@@ -4,6 +4,7 @@ use axum::{
     routing::{get, post, put},
     Router,
 };
+use dotenvy::dotenv;
 use log::info;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
@@ -20,7 +21,7 @@ use bartender::routes;
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     // Load environment variables from .env file
-    dotenv::dotenv().ok();
+    dotenv().ok();
     // Set logging levels if not already set
     if env::var_os("RUST_LOG").is_none() {
         env::set_var("RUST_LOG", "bartender=debug,tower_http=info");
