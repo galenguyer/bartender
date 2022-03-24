@@ -119,9 +119,20 @@ pub async fn get_credits(
 
 // PUT /users/credits
 pub async fn set_credits(
+    OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
+    if !user.has_group("drink") {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({
+                "error": "User does not have the correct permissions",
+                "errorCode": 401
+            })),
+        );
+    }
+
     let uid = body["uid"].as_str();
     let new_balance = body["drinkBalance"].as_i64();
 
