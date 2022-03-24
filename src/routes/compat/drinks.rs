@@ -1,4 +1,5 @@
 use crate::db;
+use crate::db::models;
 use crate::ldap::client::LdapClient;
 use crate::ldap::user::LdapUserChangeSet;
 use crate::machine;
@@ -8,6 +9,7 @@ use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
+use chrono::prelude::*;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use itertools::Itertools;
@@ -350,6 +352,20 @@ pub async fn drop(
                 );
             }
         }
+    }
+
+    let drop = models::Drop {
+        id: 0,                 // placeholder,
+        timestamp: Utc::now(), // placeholder
+        username: user_id.clone(),
+        machine: machine.id,
+        slot: slot.number,
+        item: slot.id,
+        item_name: slot.name.clone(),
+        item_price: slot.price,
+    };
+    if let Err(e) = db::drops::log_drop(&pool, &drop).await {
+        warn!("Error logging drop: {e}");
     }
 
     info!("Successfully dropped {} for {}", slot.name, user_id);
