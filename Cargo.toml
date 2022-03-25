@@ -1,7 +1,12 @@
 [package]
 name = "bartender"
+authors = ["Galen Guyer <galen@galenguyer.com>"]
 version = "0.5.1"
 edition = "2021"
+license = "MIT"
+description = "A next-generation, blazingly fast, memory safe Drink server"
+readme = "README.md"
+repository = "https://github.com/galenguyer/bartender"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
