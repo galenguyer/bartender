@@ -24,13 +24,13 @@ where
         // Grab the "Authorization" header from the request
         let auth_header = req
             .headers()
-            .and_then(|headers| headers.get(axum::http::header::AUTHORIZATION))
-            .and_then(|value| value.to_str().ok());
+            .get(axum::http::header::AUTHORIZATION)
+            .map(|h| h.to_str().unwrap());
 
         match auth_header {
             Some(header) => {
                 // Get the OIDClient from the request global state
-                let oidc_client: &OIDCClient = &*req.extensions().unwrap().get().unwrap();
+                let oidc_client: &OIDCClient = &*req.extensions().get().unwrap();
 
                 match oidc_client.validate_token(header).await {
                     Ok(user) => {
@@ -48,8 +48,8 @@ where
                 // If there's no "Authorization" header, get the "X-Auth-Token" header
                 let machine_secret = req
                     .headers()
-                    .and_then(|headers| headers.get("X-Auth-Token"))
-                    .and_then(|value| value.to_str().ok());
+                    .get("X-Auth-Token")
+                    .map(|value| value.to_str().unwrap());
 
                 match machine_secret {
                     Some(secret) => {

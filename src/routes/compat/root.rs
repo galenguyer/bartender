@@ -4,9 +4,6 @@ use std::env;
 // GET /
 pub async fn root() -> impl IntoResponse {
     Redirect::temporary(
-        env::var("WEBDRINK_URL")
-            .unwrap_or_else(|_| String::from("https://webdrink.csh.rit.edu/"))
-            .parse()
-            .unwrap(),
+        &env::var("WEBDRINK_URL").unwrap_or_else(|_| String::from("https://webdrink.csh.rit.edu/")),
     )
 }
