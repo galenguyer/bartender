@@ -4,6 +4,7 @@ use ldap3::{drive, Ldap, LdapConnAsync, LdapError, Mod, SearchEntry};
 use rand::prelude::SliceRandom;
 use rand::SeedableRng;
 use std::collections::HashSet;
+use std::sync::Arc;
 use trust_dns_resolver::{
     config::{ResolverConfig, ResolverOpts},
     AsyncResolver,
@@ -16,7 +17,7 @@ type Pool = managed::Pool<LdapManager>;
 
 #[derive(Clone)]
 pub struct LdapClient {
-    ldap: Pool,
+    ldap: Arc<Pool>,
 }
 
 #[derive(Clone)]
@@ -71,7 +72,9 @@ impl LdapClient {
         let ldap_manager = LdapManager::new(bind_dn, bind_pw).await;
         let ldap_pool = Pool::builder(ldap_manager).max_size(5).build().unwrap();
 
-        LdapClient { ldap: ldap_pool }
+        LdapClient {
+            ldap: Arc::new(ldap_pool),
+        }
     }
 
     pub async fn search_users(&mut self, query: &str) -> Vec<LdapUser> {

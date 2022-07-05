@@ -1,3 +1,5 @@
+use crate::ldap::client::LdapClient;
+
 use super::client::OIDCClient;
 use super::user;
 use axum::async_trait;
@@ -27,55 +29,74 @@ where
             .get(axum::http::header::AUTHORIZATION)
             .map(|h| h.to_str().unwrap());
 
-        match auth_header {
-            Some(header) => {
-                // Get the OIDClient from the request global state
-                let oidc_client: &OIDCClient = &*req.extensions().get().unwrap();
+        if let Some(header) = auth_header {
+            // Get the OIDClient from the request global state
+            let oidc_client: &OIDCClient = &*req.extensions().get().unwrap();
 
-                match oidc_client.validate_token(header).await {
-                    Ok(user) => {
-                        return Ok(Self(user));
-                    }
-                    Err(_) => {
-                        return Err((
-                            StatusCode::UNAUTHORIZED,
-                            axum::Json(json!({"error": "token invalid or expired"})),
-                        ))
-                    }
+            match oidc_client.validate_token(header).await {
+                Ok(user) => {
+                    return Ok(Self(user));
                 }
-            }
-            None => {
-                // If there's no "Authorization" header, get the "X-Auth-Token" header
-                let machine_secret = req
-                    .headers()
-                    .get("X-Auth-Token")
-                    .map(|value| value.to_str().unwrap());
-
-                match machine_secret {
-                    Some(secret) => {
-                        if secret == env::var("MACHINE_SECRET").unwrap() {
-                            Ok(Self(user::OIDCUser {
-                                name: Some(String::from("Drink Machine")),
-                                preferred_username: String::from("drink_machine"),
-                                groups: Box::new([String::from("drink")]),
-                                drink_balance: Some(0),
-                            }))
-                        } else {
-                            return Err((
-                                StatusCode::UNAUTHORIZED,
-                                axum::Json(json!({"error": "invalid machine secret"})),
-                            ));
-                        }
-                    }
-                    // There's no known auth header at all
-                    None => {
-                        return Err((
-                            StatusCode::UNAUTHORIZED,
-                            axum::Json(json!({"error": "missing auth header"})),
-                        ))
-                    }
+                Err(_) => {
+                    return Err((
+                        StatusCode::UNAUTHORIZED,
+                        axum::Json(json!({"error": "token invalid or expired"})),
+                    ))
                 }
             }
         }
+
+        // If there's no "Authorization" header, get the "X-Auth-Token" header
+        let secret_header = req
+            .headers()
+            .get("X-Auth-Token")
+            .map(|value| value.to_str().unwrap());
+        if let Some(secret) = secret_header {
+            if secret == env::var("MACHINE_SECRET").unwrap() {
+                // If X-User-Info is set
+                let uid_header = req
+                    .headers()
+                    .get("X-User-Info")
+                    .map(|v| v.to_str().unwrap().to_owned());
+                if let Some(uid) = uid_header {
+                    let ldap = &mut *req.extensions_mut().get_mut::<LdapClient>().unwrap();
+                    match ldap.get_user(&uid).await {
+                        Some(user) => {
+                            return Ok(Self(user::OIDCUser {
+                                name: Some(user.cn),
+                                preferred_username: user.uid,
+                                groups: user.groups.try_into().unwrap(),
+                                drink_balance: user.drinkBalance,
+                            }))
+                        }
+                        None => {
+                            return Err((
+                                StatusCode::UNAUTHORIZED,
+                                axum::Json(json!({"error": "user not found"})),
+                            ));
+                        }
+                    }
+                }
+                // If no other identifying information is provided
+                else {
+                    return Ok(Self(user::OIDCUser {
+                        name: Some(String::from("Drink Machine")),
+                        preferred_username: String::from("drink_machine"),
+                        groups: Box::new([String::from("drink")]),
+                        drink_balance: Some(0),
+                    }));
+                }
+            } else {
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    axum::Json(json!({"error": "invalid machine secret"})),
+                ));
+            }
+        }
+
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            axum::Json(json!({"error": "missing auth header"})),
+        ));
     }
 }

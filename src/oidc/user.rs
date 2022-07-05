@@ -6,7 +6,7 @@ pub struct OIDCUser {
     pub name: Option<String>,
     pub preferred_username: String,
     pub groups: Box<[String]>,
-    pub drink_balance: Option<i32>,
+    pub drink_balance: Option<i64>,
 }
 
 impl OIDCUser {
