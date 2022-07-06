@@ -35,6 +35,25 @@ pub async fn get_slots_with_items(
     }
 }
 
+pub async fn search_item(
+    pool: &Pool<Postgres>,
+    item: &str,
+) -> Result<Vec<models::SlotWithItem>, sqlx::Error> {
+    sqlx::query_as::<_, models::SlotWithItem>(
+        "SELECT machine,number,item,active,count,id,name,price FROM slots 
+        INNER JOIN items 
+            ON slots.item = items.id 
+        WHERE machine IN (
+            SELECT id FROM machines 
+                WHERE active = true
+        ) AND name ILIKE '%' || $1 || '%'
+        ORDER BY machine, number ASC",
+    )
+    .bind(item)
+    .fetch_all(pool)
+    .await
+}
+
 pub async fn get_slot(
     pool: &Pool<Postgres>,
     machine_id: i32,

@@ -35,7 +35,7 @@ pub async fn handle(
         user.preferred_username,
         payload.message
     );
-    let parts: Vec<String> = payload
+    let mut parts: Vec<String> = payload
         .message
         .split_whitespace()
         .into_iter()
@@ -174,6 +174,37 @@ pub async fn handle(
             (StatusCode::OK, Json(json!({ "message": resp })))
         }
         "drop" => {
+            // TODO: What if we could just drop with a drink name?? Unless...
+            let item_name = parts.iter().skip(1).join(" ");
+
+            let matching_items = db::slots::search_item(&pool, &item_name).await;
+            if matching_items.is_ok() {
+                let matching_items = matching_items.unwrap();
+                if matching_items.len() > 1 {
+                    log::warn!(
+                        "Rejecting request from {} to drop a drink, too many matching items",
+                        user.preferred_username,
+                    );
+                    return (
+                        StatusCode::OK,
+                        Json(
+                            json!({ "message": "Multiple matching items, please be more specific" }),
+                        ),
+                    );
+                }
+                if matching_items.len() == 1 {
+                    parts[1] = db::machines::get_active_machines(&pool)
+                        .await
+                        .unwrap()
+                        .iter()
+                        .find(|machine| machine.id == matching_items[0].machine)
+                        .unwrap()
+                        .name
+                        .clone();
+                    parts[2] = matching_items[0].number.to_string();
+                }
+            }
+
             let machine_name = parts.get(1);
             if machine_name.is_none() {
                 log::warn!(
@@ -427,13 +458,19 @@ pub async fn handle(
             (
                 StatusCode::OK,
                 Json(json!({
-                    "message": format!("Dropped you a {} from {}! You have {} credits remaining", slot.name, machine.display_name, new_balance)
+                    "message":
+                        format!(
+                            "Dropped you a {} from {}! You have {} credits remaining",
+                            slot.name, machine.display_name, new_balance
+                        )
                 })),
             )
-        },
+        }
         "commands" | "help" => (
             StatusCode::OK,
-            Json(json!({ "message": "Valid commands:\ncredits\nmachines\nshow [machine]\ndrop [machine] [slot]" })),
+            Json(
+                json!({ "message": "Valid commands:\ncredits\nmachines\nshow [machine]\ndrop [machine] [slot]" }),
+            ),
         ),
         unknown => (
             StatusCode::OK,
