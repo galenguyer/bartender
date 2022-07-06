@@ -46,7 +46,9 @@ pub async fn search_item(
         WHERE machine IN (
             SELECT id FROM machines 
                 WHERE active = true
-        ) AND name ILIKE '%' || $1 || '%'
+        ) 
+            AND name ILIKE '%' || $1 || '%' 
+            AND active = true
         ORDER BY machine, number ASC",
     )
     .bind(item)

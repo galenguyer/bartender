@@ -182,13 +182,14 @@ pub async fn handle(
                 let matching_items = matching_items.unwrap();
                 if matching_items.len() > 1 {
                     log::warn!(
-                        "Rejecting request from {} to drop a drink, too many matching items",
+                        "Rejecting request from {} to drop {}, too many matching items",
                         user.preferred_username,
+                        item_name,
                     );
                     return (
                         StatusCode::OK,
                         Json(
-                            json!({ "message": "Multiple matching items, please be more specific" }),
+                            json!({ "message": format!("Multiple items matching {}, please be more specific", item_name) }),
                         ),
                     );
                 }
