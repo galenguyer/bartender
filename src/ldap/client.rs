@@ -173,6 +173,29 @@ impl LdapClient {
         }
     }
 
+    pub async fn get_user_by_phone(&mut self, phone: &str) -> Option<LdapUser> {
+        let mut ldap = self.ldap.get().await.unwrap();
+        ldap.with_timeout(std::time::Duration::from_secs(5));
+        let (results, _result) = ldap
+            .search(
+                "cn=users,cn=accounts,dc=csh,dc=rit,dc=edu",
+                ldap3::Scope::Subtree,
+                &format!("mobile={phone}"),
+                SearchAttrs::default().finalize(),
+            )
+            .await
+            .unwrap()
+            .success()
+            .unwrap();
+
+        if results.len() == 1 {
+            let user = SearchEntry::construct(results.get(0).unwrap().to_owned());
+            Some(LdapUser::from_entry(&user))
+        } else {
+            None
+        }
+    }
+
     pub async fn update_user(&mut self, change_set: &LdapUserChangeSet) {
         let mut ldap = self.ldap.get().await.unwrap();
 

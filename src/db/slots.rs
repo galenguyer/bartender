@@ -3,19 +3,36 @@ use sqlx::{Pool, Postgres};
 
 pub async fn get_slots_with_items(
     pool: &Pool<Postgres>,
+    machine: Option<i32>,
 ) -> Result<Vec<models::SlotWithItem>, sqlx::Error> {
-    sqlx::query_as::<_, models::SlotWithItem>(
-        "SELECT machine,number,item,active,count,id,name,price FROM slots 
-        INNER JOIN items 
-            ON slots.item = items.id 
-        WHERE machine IN (
-            SELECT id FROM machines 
-                WHERE active = true
-        )
-        ORDER BY machine, number ASC",
-    )
-    .fetch_all(pool)
-    .await
+    match machine {
+        Some(machine_id) => {
+            sqlx::query_as::<_, models::SlotWithItem>(
+                "SELECT machine,number,item,active,count,id,name,price FROM slots 
+                INNER JOIN items 
+                    ON slots.item = items.id 
+                WHERE machine = $1
+                ORDER BY machine, number ASC",
+            )
+            .bind(machine_id)
+            .fetch_all(pool)
+            .await
+        }
+        None => {
+            sqlx::query_as::<_, models::SlotWithItem>(
+                "SELECT machine,number,item,active,count,id,name,price FROM slots 
+                INNER JOIN items 
+                    ON slots.item = items.id 
+                WHERE machine IN (
+                    SELECT id FROM machines 
+                        WHERE active = true
+                )
+                ORDER BY machine, number ASC",
+            )
+            .fetch_all(pool)
+            .await
+        }
+    }
 }
 
 pub async fn get_slot(

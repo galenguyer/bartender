@@ -69,6 +69,13 @@ async fn main() -> Result<(), sqlx::Error> {
                 .put(routes::compat::items::put_items)
                 .delete(routes::compat::items::delete_items),
         )
+        .nest(
+            "/api",
+            Router::new().nest(
+                "/v2",
+                Router::new().route("/sms", post(routes::v2::sms::handle)),
+            ),
+        )
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())

@@ -77,6 +77,51 @@ where
                         }
                     }
                 }
+
+                // Else if X-User-Phone is set
+                let phone_header = req
+                    .headers()
+                    .get("X-User-Phone")
+                    .map(|v| v.to_str().unwrap().to_owned());
+                if let Some(mut phone) = phone_header {
+                    log::debug!("Got SMS from {}", phone);
+
+                    // Remove +1 from numbers
+                    if phone.starts_with('+') {
+                        if !phone.starts_with("+1") {
+                            return Err((
+                                StatusCode::UNAUTHORIZED,
+                                axum::Json(
+                                    json!({"error": "Only US phone numbers are supported for now"}),
+                                ),
+                            ));
+                        } else {
+                            phone = phone.replace("+1", "");
+                        }
+                    }
+
+                    let ldap = &mut *req.extensions_mut().get_mut::<LdapClient>().unwrap();
+                    match ldap.get_user_by_phone(&phone).await {
+                        Some(user) => {
+                            log::info!("Got user {} from phone number {}", user.uid, phone);
+                            return Ok(Self(user::OIDCUser {
+                                name: Some(user.cn),
+                                preferred_username: user.uid,
+                                groups: user.groups.try_into().unwrap(),
+                                drink_balance: user.drinkBalance,
+                            }));
+                        }
+                        None => {
+                            return Err((
+                                StatusCode::UNAUTHORIZED,
+                                axum::Json(json!({
+                                    "error": "invalid user",
+                                    "message": "Make sure your phone number is in the format 5857583425 on profiles"
+                                })),
+                            ));
+                        }
+                    }
+                }
                 // If no other identifying information is provided
                 else {
                     return Ok(Self(user::OIDCUser {

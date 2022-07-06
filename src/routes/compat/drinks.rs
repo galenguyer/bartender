@@ -30,7 +30,7 @@ pub async fn get_drinks(
         .collect();
     let machine_states: Vec<Result<machine::MachineResponse, reqwest::Error>> =
         futures.collect().await;
-    let slots = db::slots::get_slots_with_items(&pool).await.unwrap();
+    let slots = db::slots::get_slots_with_items(&pool, None).await.unwrap();
     let resp =
         DrinkResponse {
             machines: machines
