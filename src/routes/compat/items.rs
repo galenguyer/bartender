@@ -97,14 +97,15 @@ pub async fn post_items(
         ),
         // UHHHHHH, Ram?
         // https://github.com/ComputerScienceHouse/mizu/blob/master/mizu/items.py#L88-L92
-        Err(_) => (
+        Err(e) => (
             StatusCode::CREATED,
             Json(json!({
                 "message":
                     format!(
                         "Item '{}' added succesfully at a price of {} credits",
                         name, price
-                    )
+                    ),
+                "error": e.to_string(),
             })),
         ),
     }
