@@ -59,7 +59,10 @@ pub async fn update_slot_status(
     debug!("Validated required parameters");
 
     let active = body["active"].as_bool();
-    let item_id = body["item_id"].as_i64();
+    let item_id = body["item_id"].as_str().and_then(|id| match id.parse::<i32>() {
+        Ok(i) => Some(i),
+        Err(_) => None,
+    });
 
     if active.is_none() && item_id.is_none() {
         warn!(
