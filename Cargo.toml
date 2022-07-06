@@ -1,7 +1,7 @@
 [package]
 name = "bartender"
 authors = ["Galen Guyer <galen@galenguyer.com>"]
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 license = "MIT"
 description = "A next-generation, blazingly fast, memory safe Drink server"

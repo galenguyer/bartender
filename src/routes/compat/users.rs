@@ -73,7 +73,7 @@ pub async fn get_credits(
                 "user": {
                     "uid": uid,
                     "cn": user.cn,
-                    "drinkBalance": user.drinkBalance.unwrap_or(0)
+                    "drinkBalance": format!("{}", user.drinkBalance.unwrap_or(0))
                 }
             })),
         );
@@ -104,7 +104,7 @@ pub async fn get_credits(
                 "user": {
                     "uid": uid,
                     "cn": user.cn,
-                    "drinkBalance": user.drinkBalance.unwrap_or(0)
+                    "drinkBalance": format!("{}", user.drinkBalance.unwrap_or(0))
                 }
             })),
         );
