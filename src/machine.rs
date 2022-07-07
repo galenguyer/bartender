@@ -35,7 +35,8 @@ pub async fn get_status(name: &str) -> Result<MachineResponse, reqwest::Error> {
 
 pub async fn drop(name: &str, slot: i32) -> Result<reqwest::Response, reqwest::Error> {
     let client = reqwest::Client::new();
-    let body = HashMap::from([("slot", slot)]);
+    // We pass the right slot, but bubbler does a -1... TODO: not be out of sync
+    let body = HashMap::from([("slot", slot+1)]);
 
     client
         .post(format!("https://{}.csh.rit.edu/drop", name))
