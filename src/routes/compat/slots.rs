@@ -186,7 +186,7 @@ pub async fn update_slot_status(
         }
     }
 
-    if let Some(count) = body["count"].as_i64() {
+    if let Some(count) = body["count"].as_str().and_then(|s| Some(s.parse::<i64>().unwrap_or(-1))) {
         if count < 0 {
             return (
                 StatusCode::BAD_REQUEST,
