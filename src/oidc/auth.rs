@@ -7,9 +7,15 @@ use axum::extract::FromRequest;
 use axum::http::StatusCode;
 use axum::BoxError;
 use serde_json::json;
+use serde::Deserialize;
 use std::env;
 
 pub struct OIDCAuth(pub user::OIDCUser);
+
+#[derive(Deserialize, Debug)]
+struct MinimalUserInfo {
+    preferred_username: String,
+}
 
 #[async_trait]
 impl<B> FromRequest<B> for OIDCAuth
@@ -57,10 +63,11 @@ where
                 let uid_header = req
                     .headers()
                     .get("X-User-Info")
-                    .map(|v| v.to_str().unwrap().to_owned());
-                if let Some(uid) = uid_header {
+                    .map(|v| v.to_str().unwrap().to_owned())
+                    .and_then(|value| serde_json::from_str::<MinimalUserInfo>(&value).ok());
+                if let Some(user) = uid_header {
                     let ldap = &mut *req.extensions_mut().get_mut::<LdapClient>().unwrap();
-                    match ldap.get_user(&uid).await {
+                    match ldap.get_user(&user.preferred_username).await {
                         Some(user) => {
                             return Ok(Self(user::OIDCUser {
                                 name: Some(user.cn),
