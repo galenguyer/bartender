@@ -197,6 +197,7 @@ pub async fn drop(
     let machine_status = machine_status.unwrap();
 
     if (machine.name == "snack" && slot.count.unwrap_or(0) < 1)
+        || !slot.active
         || !(*machine_status.slots.get(slot.number as usize).unwrap()).stocked
     {
         warn!(
