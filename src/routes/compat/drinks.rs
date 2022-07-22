@@ -5,7 +5,7 @@ use crate::ldap::user::LdapUserChangeSet;
 use crate::machine;
 use crate::oidc::auth::OIDCAuth;
 use crate::{DrinkResponse, Item, Machine, Slot};
-use axum::extract::Extension;
+use axum::extract::{Extension, Query};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -16,14 +16,30 @@ use itertools::Itertools;
 use log::{debug, error, info, warn};
 use serde_json::json;
 use sqlx::{Pool, Postgres};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 // GET /drinks
 pub async fn get_drinks(
     OIDCAuth(_user): OIDCAuth,
     Extension(pool): Extension<Arc<Pool<Postgres>>>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    let machines = db::machines::get_active_machines(&pool).await.unwrap();
+    let machines = match params.get("machine") {
+        Some(machine) => vec![match db::machines::get_machine(&pool, machine).await {
+            Err(sqlx::Error::RowNotFound) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "message": format!("The machine name '{}' is not a valid machine", machine)
+                    })),
+                );
+            }
+            // (Catch other errors)
+            machine => machine.unwrap(),
+        }],
+        None => db::machines::get_active_machines(&pool).await.unwrap(),
+    };
     let futures: FuturesOrdered<_> = machines
         .iter()
         .map(|m| machine::get_status(&m.name))
@@ -87,7 +103,7 @@ pub async fn get_drinks(
                 machines.iter().map(|machine| &machine.name).join(", ")
             ),
         };
-    Json(resp)
+    (StatusCode::OK, Json(json!(resp)))
 }
 
 // POST /drinks/drop
