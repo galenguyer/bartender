@@ -116,7 +116,7 @@ where
                                 StatusCode::UNAUTHORIZED,
                                 axum::Json(json!({
                                     "error": "invalid user",
-                                    "message": "Make sure your phone number is in the format 5857583425 on profiles"
+                                    "message": format!("Make sure your phone number is in the format {} on profiles", &phone)
                                 })),
                             ));
                         }
