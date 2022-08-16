@@ -102,7 +102,7 @@ pub async fn get_credits(
             Json(json!({
                 "message": format!("Retrieved user with iButton {}", ibutton),
                 "user": {
-                    "uid": uid,
+                    "uid": user.uid,
                     "cn": user.cn,
                     "drinkBalance": format!("{}", user.drinkBalance.unwrap_or(0))
                 }
