@@ -14,7 +14,7 @@ pub async fn get_users(
     OIDCAuth(user): OIDCAuth,
     Extension(mut ldap): Extension<LdapClient>,
 ) -> impl IntoResponse {
-    if !user.has_group("drink") {
+    if !(user.has_group("drink") || user.has_group("drink_admin")) {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({
@@ -46,7 +46,7 @@ pub async fn get_credits(
     if uid.is_some() {
         let uid = uid.unwrap();
 
-        if !user.has_group("drink") && user.preferred_username != uid {
+        if !(user.has_group("drink") || user.has_group("drink_admin")) && user.preferred_username != uid {
             return (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({
@@ -123,7 +123,7 @@ pub async fn set_credits(
     Extension(mut ldap): Extension<LdapClient>,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    if !user.has_group("drink") {
+    if !(user.has_group("drink") || user.has_group("drink_admin")) {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({
