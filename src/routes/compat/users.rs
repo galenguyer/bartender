@@ -78,7 +78,7 @@ pub async fn get_credits(
             })),
         );
     } else if ibutton.is_some() {
-        if !user.has_group("drink") && !user.has_group("drink_admin") {
+        if !(user.has_group("drink") || user.has_group("drink_admin")) {
             return (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({
