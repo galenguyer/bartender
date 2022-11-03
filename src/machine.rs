@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::time::Duration;
+use log::warn;
 
 #[derive(Debug, Deserialize)]
 pub struct MachineResponse {
@@ -17,6 +18,11 @@ pub struct SlotResponse {
     pub stocked: bool,
 }
 
+fn report_error(name: &str, err: reqwest::Error) -> reqwest::Error {
+    warn!("Couldn't get status for machine {}! Assuming it's offline. {:?}", name, err);
+    err
+}
+
 pub async fn get_status(name: &str) -> Result<MachineResponse, reqwest::Error> {
     let client = reqwest::Client::new();
 
@@ -25,9 +31,11 @@ pub async fn get_status(name: &str) -> Result<MachineResponse, reqwest::Error> {
         .header("X-Auth-Token", env::var("MACHINE_SECRET").unwrap())
         .timeout(Duration::from_secs(5))
         .send()
-        .await?
+        .await
+        .map_err(|err| report_error(name, err))?
         .json::<MachineResponse>()
-        .await?;
+        .await
+        .map_err(|err| report_error(name, err))?;
 
     res.name = name.to_string();
     Ok(res)
